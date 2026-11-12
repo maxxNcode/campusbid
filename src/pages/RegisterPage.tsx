@@ -24,7 +24,7 @@ export default function RegisterPage() {
     if (fullName.trim().length < 2) errors.fullName = 'Enter your full name.'
     if (!email.includes('@')) errors.email = 'Enter a valid email address.'
     if (password.length < MIN_PASSWORD_LENGTH) {
-      errors.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`
+      errors.password = 'This password is too short.'
     }
     if (!program) errors.program = 'Choose your program.'
     if (!yearLevel) errors.yearLevel = 'Choose your year level.'
