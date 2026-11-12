@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Profile } from '../types/database'
+import type { PendingAccount, Profile } from '../types/database'
 
 export type RegistrationDetails = {
   fullName: string
@@ -41,4 +41,20 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
   if (error) throw error
   return data
+}
+
+export async function fetchPendingAccounts(): Promise<PendingAccount[]> {
+  const { data, error } = await supabase.rpc('pending_accounts')
+  if (error) throw error
+  return data
+}
+
+// The database checks that the caller is an approved admin and records the
+// reviewer and time; the browser cannot set those values itself.
+export async function reviewAccount(profileId: string, decision: 'approved' | 'rejected') {
+  const { error } = await supabase.rpc('review_account', {
+    target_profile_id: profileId,
+    decision,
+  })
+  if (error) throw error
 }

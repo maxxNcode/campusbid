@@ -27,3 +27,10 @@ export function RequireApproved() {
   if (profile?.approval_status !== 'approved') return <Navigate to="/pending" replace />
   return <Outlet />
 }
+
+// Admin-only pages.
+export function RequireAdmin() {
+  const { profile } = useAuth()
+  if (!profile?.is_admin) return <Navigate to="/" replace />
+  return <Outlet />
+}

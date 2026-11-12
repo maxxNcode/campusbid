@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import AppLayout from './components/AppLayout'
-import { RequireApproved, RequireSignedIn, RequireSignedOut } from './components/RouteGuards'
+import AdminApprovalsPage from './pages/AdminApprovalsPage'
+import { RequireAdmin, RequireApproved, RequireSignedIn, RequireSignedOut } from './components/RouteGuards'
 import MarketplacePage from './pages/MarketplacePage'
 import NotFoundPage from './pages/NotFoundPage'
 import PendingApprovalPage from './pages/PendingApprovalPage'
@@ -20,6 +21,9 @@ export default function App() {
         <Route element={<RequireApproved />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<MarketplacePage />} />
+            <Route element={<RequireAdmin />}>
+              <Route path="/admin/approvals" element={<AdminApprovalsPage />} />
+            </Route>
           </Route>
         </Route>
       </Route>
