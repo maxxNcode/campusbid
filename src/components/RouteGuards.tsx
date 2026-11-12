@@ -20,3 +20,10 @@ export function RequireSignedOut() {
   if (session) return <Navigate to="/" replace />
   return <Outlet />
 }
+
+// Browsing and trading pages: the account must be approved by an admin.
+export function RequireApproved() {
+  const { profile } = useAuth()
+  if (profile?.approval_status !== 'approved') return <Navigate to="/pending" replace />
+  return <Outlet />
+}

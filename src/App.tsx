@@ -1,8 +1,9 @@
 import { Route, Routes } from 'react-router'
 import AppLayout from './components/AppLayout'
-import { RequireSignedIn, RequireSignedOut } from './components/RouteGuards'
+import { RequireApproved, RequireSignedIn, RequireSignedOut } from './components/RouteGuards'
 import MarketplacePage from './pages/MarketplacePage'
 import NotFoundPage from './pages/NotFoundPage'
+import PendingApprovalPage from './pages/PendingApprovalPage'
 import RegisterPage from './pages/RegisterPage'
 import SignInPage from './pages/SignInPage'
 
@@ -15,8 +16,11 @@ export default function App() {
       </Route>
 
       <Route element={<RequireSignedIn />}>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<MarketplacePage />} />
+        <Route path="/pending" element={<PendingApprovalPage />} />
+        <Route element={<RequireApproved />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<MarketplacePage />} />
+          </Route>
         </Route>
       </Route>
 
