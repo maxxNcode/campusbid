@@ -90,6 +90,7 @@ npm run typecheck   # TypeScript, app and scripts/tests
 npm run lint        # oxlint
 npm run build       # production build
 npm test            # integration tests against the Supabase project in .env
+npm run test:offline  # SQL access checks on a local in-memory Postgres (no project needed)
 ```
 
 `npm test` signs in as the seeded users and calls the real project, so run `npm run seed` first. Without a configured `.env` the tests are reported as skipped. Results so far are in `docs/testing.md`.

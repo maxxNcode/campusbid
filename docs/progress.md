@@ -45,4 +45,17 @@ Decisions:
 
 Verification done today is listed in `docs/testing.md`. The Supabase integration tests have not run yet.
 
+### Day 1 review fixes (about 21:08–21:12)
+
+The Day 1 review found no blockers and three should-fix items, all fixed:
+
+| Commit | Change |
+| --- | --- |
+| a1be134 | Buyers keep seeing listings they requested after sale or withdrawal (security definer helper, no policy recursion) |
+| 8b45030 | New database functions are no longer callable by `anon`/`authenticated` by default |
+| 0fa221b | Seed runs only when `CAMPUSBID_ENVIRONMENT=development` is set explicitly |
+| c856d18 | Offline SQL checks moved into the repository (`npm run test:offline`) |
+
+Minor review items not changed: profile column exposure and the Phase 3 request checks are recorded in `docs/known-issues.md`; re-approving a rejected account is a team decision and stays documented; the raw error for malformed direct API sign-ups does not affect the app's form.
+
 Next: the team creates the Supabase project, then the migrations, seed and tests are run for real. Phase 2 (listings) waits for review.
