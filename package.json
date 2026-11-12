@@ -9,7 +9,8 @@
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview",
-    "seed": "node --env-file=.env scripts/seed.ts"
+    "seed": "node --env-file=.env scripts/seed.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
