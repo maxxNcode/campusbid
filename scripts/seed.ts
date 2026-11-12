@@ -1,5 +1,7 @@
 // Seeds categories and the fictional example.test demo accounts.
 // Run with: npm run seed   (reads .env; development project only)
+// Requires CAMPUSBID_ENVIRONMENT=development in .env, so demo accounts with a
+// shared password are never created on a production project by accident.
 //
 // Safe to run more than once: existing demo accounts get their password,
 // details and approval state reset to the values below, so the pending
@@ -16,8 +18,11 @@ if (!supabaseUrl || !serviceRoleKey || !demoPassword) {
   console.error('Set VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and DEMO_ACCOUNT_PASSWORD in .env first.')
   process.exit(1)
 }
-if (process.env.CAMPUSBID_ENVIRONMENT === 'production') {
-  console.error('Refusing to create demo accounts: CAMPUSBID_ENVIRONMENT is production.')
+if (process.env.CAMPUSBID_ENVIRONMENT !== 'development') {
+  console.error(
+    'Refusing to create demo accounts: set CAMPUSBID_ENVIRONMENT=development in .env ' +
+      'only for a development Supabase project.',
+  )
   process.exit(1)
 }
 if (demoPassword.length < 8) {

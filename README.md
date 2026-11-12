@@ -48,7 +48,7 @@ Exact dependency versions are locked in `package-lock.json`.
    ```sh
    cp .env.example .env
    ```
-   Fill in the project URL, anon (publishable) key and service-role key from Project Settings > API, and pick a local demo password. The service-role key is used only by `scripts/` and `tests/`; it must never get a `VITE_` prefix or appear in browser code. Never commit `.env`.
+   Fill in the project URL, anon (publishable) key and service-role key from Project Settings > API, and pick a local demo password. For a development project, uncomment `CAMPUSBID_ENVIRONMENT=development`: the seed script refuses to run unless it is set to exactly `development`. Never set it for a project that holds real users. The service-role key is used only by `scripts/` and `tests/`; it must never get a `VITE_` prefix or appear in browser code. Never commit `.env`.
 5. **Install and seed:**
    ```sh
    npm install
@@ -62,7 +62,7 @@ Exact dependency versions are locked in `package-lock.json`.
 
 ### Demo accounts (local demo only)
 
-`npm run seed` creates these fictional accounts. All use the `DEMO_ACCOUNT_PASSWORD` from your `.env`. They are demo data: exclude every `@example.test` account from pilot metrics, and do not create them on a public deployment (the seed refuses to run when `CAMPUSBID_ENVIRONMENT=production`).
+`npm run seed` creates these fictional accounts. All use the `DEMO_ACCOUNT_PASSWORD` from your `.env`. They are demo data: exclude every `@example.test` account from pilot metrics, and do not create them on a project that holds real users (the seed refuses to run unless `CAMPUSBID_ENVIRONMENT=development`).
 
 | Email | Name | Role |
 | --- | --- | --- |
