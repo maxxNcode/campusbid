@@ -298,3 +298,59 @@ select count(*) = 0 as pass from public.member_names(array['00000000-0000-0000-0
 -- CHECK member_names is not callable by anon [error]
 set role anon;
 select * from public.member_names(array['00000000-0000-0000-0000-00000000000c']::uuid[]);
+
+-- Phase 2: withdrawing a listing.
+
+-- CHECK setup a pending request on the seller's drafting set
+reset role; set role service_role;
+insert into public.purchase_requests (listing_id, buyer_id, meetup_place, meetup_at)
+ select id, '00000000-0000-0000-0000-00000000000b', 'Library lobby', now() + interval '2 days'
+ from public.listings where title = 'Drafting set';
+reset role;
+select count(*) = 1 as pass from public.purchase_requests where status = 'pending';
+
+-- CHECK buyer cannot withdraw the seller's listing [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.withdraw_listing((select id from public.listings where title = 'Drafting set'));
+
+-- CHECK pending applicant cannot withdraw a listing [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
+select public.withdraw_listing(2);
+
+-- CHECK anon cannot call withdraw_listing [error]
+set role anon;
+select public.withdraw_listing(2);
+
+-- CHECK seller cannot withdraw own sold listing [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.withdraw_listing(1);
+
+-- CHECK seller withdraws own listing; the pending request is cancelled, not deleted
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.withdraw_listing((select id from public.listings where title = 'Drafting set'));
+reset role;
+select (select status from public.listings where title = 'Drafting set') = 'withdrawn'
+   and (select count(*) from public.purchase_requests r join public.listings l on l.id = r.listing_id
+        where l.title = 'Drafting set' and r.status = 'cancelled' and r.closed_at is not null
+          and r.closed_reason = 'The seller withdrew the listing.') = 1 as pass;
+
+-- CHECK withdrawing twice is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.withdraw_listing((select id from public.listings where title = 'Drafting set'));
+
+-- CHECK seller still sees the withdrawn listing; buyer sees it through the request
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+create temp table if not exists seen (who text, n bigint);
+insert into seen select 'seller', count(*) from public.listings where title = 'Drafting set';
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+insert into seen select 'buyer', count(*) from public.listings where title = 'Drafting set';
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+insert into seen select 'other', count(*) from public.listings where title = 'Drafting set';
+select (select n from seen where who='seller') = 1 and (select n from seen where who='buyer') = 1
+   and (select n from seen where who='other') = 0 as pass;
+
+-- CHECK seller cannot edit the withdrawn listing (0 rows changed)
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+update public.listings set price = 1 where title = 'Drafting set';
+reset role;
+select price = 400.00 as pass from public.listings where title = 'Drafting set';

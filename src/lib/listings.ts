@@ -47,6 +47,26 @@ export async function fetchMemberNames(ids: string[]): Promise<Map<string, strin
   return names
 }
 
+// The seller's own listings in every status, newest first.
+export async function fetchMyListings(userId: string): Promise<Listing[]> {
+  const { data, error } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('seller_id', userId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+// Withdraws an available listing. The database checks ownership and status
+// again and cancels pending requests on it; request rows are kept.
+export async function withdrawListing(id: number): Promise<Listing> {
+  const { data, error } = await supabase.rpc('withdraw_listing', { target_listing_id: id })
+  if (error) throw error
+  return data
+}
+
 export async function uploadListingPhoto(userId: string, file: File): Promise<string> {
   const path = generatedPhotoPath(userId, file.type)
   const { error } = await supabase.storage

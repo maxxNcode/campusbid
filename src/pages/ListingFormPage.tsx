@@ -131,7 +131,7 @@ export default function ListingFormPage() {
       <section>
         <h1 className="h3">{editingId === null ? 'Sell an item' : 'Edit listing'}</h1>
         <p role="alert">{loadState.message}</p>
-        <Link to="/">Back to Browse</Link>
+        <Link to="/my-listings">Back to My Listings</Link>
       </section>
     )
   }

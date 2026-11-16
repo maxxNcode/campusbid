@@ -29,6 +29,7 @@ export default function AppLayout() {
             Browse
           </NavLink>
           <NavLink to="/sell">Sell an Item</NavLink>
+          <NavLink to="/my-listings">My Listings</NavLink>
           {profile?.is_admin && <NavLink to="/admin/approvals">Account approvals</NavLink>}
           <span className="text-body-secondary">{profile?.full_name}</span>
           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleSignOut}>

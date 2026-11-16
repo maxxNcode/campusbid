@@ -245,6 +245,10 @@ export type Database = {
           created_at: string
         }[]
       }
+      withdraw_listing: {
+        Args: { target_listing_id: number }
+        Returns: Database['public']['Tables']['listings']['Row']
+      }
       review_account: {
         Args: {
           target_profile_id: string

@@ -5,6 +5,7 @@ import { RequireAdmin, RequireApproved, RequireSignedIn, RequireSignedOut } from
 import ListingDetailsPage from './pages/ListingDetailsPage'
 import ListingFormPage from './pages/ListingFormPage'
 import MarketplacePage from './pages/MarketplacePage'
+import MyListingsPage from './pages/MyListingsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import PendingApprovalPage from './pages/PendingApprovalPage'
 import RegisterPage from './pages/RegisterPage'
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/sell" element={<ListingFormPage />} />
             <Route path="/listings/:id" element={<ListingDetailsPage />} />
             <Route path="/listings/:id/edit" element={<ListingFormPage />} />
+            <Route path="/my-listings" element={<MyListingsPage />} />
             <Route element={<RequireAdmin />}>
               <Route path="/admin/approvals" element={<AdminApprovalsPage />} />
             </Route>
