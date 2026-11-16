@@ -148,6 +148,11 @@ select public.current_user_is_approved() as pass;
 -- Phase 2: listing writes and listing photos.
 -- Users: b = approved buyer, c = approved seller, e = pending applicant.
 
+-- CHECK setup a pending applicant for the listing checks
+reset role;
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-00000000000e','p2@example.test','{"full_name":"Pending Two","program":"BS Civil Engineering","year_level":2}');
+select approval_status = 'pending' as pass from public.profiles where id = '00000000-0000-0000-0000-00000000000e';
+
 -- CHECK seller creates a listing; seller and status come from the defaults
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
 insert into public.listings (category_id, program, title, description, price, condition, known_defects, photo_path)
@@ -260,3 +265,36 @@ set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000
 delete from storage.objects;
 reset role;
 select count(*) = 1 as pass from storage.objects;
+
+-- CHECK approved buyer can no longer read the seller's profile row
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 0 as pass from public.profiles where id = '00000000-0000-0000-0000-00000000000c';
+
+-- CHECK approved buyer still reads own profile row
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 1 as pass from public.profiles;
+
+-- CHECK admin still reads every profile row
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select count(*) = 5 as pass from public.profiles where id::text like '00000000-0000-0000-0000-00000000000_';
+
+-- CHECK member_names gives an approved buyer the seller's name and nothing else
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 1 and bool_and(full_name = 'Seller') as pass
+ from public.member_names(array['00000000-0000-0000-0000-00000000000c']::uuid[]);
+
+-- CHECK member_names returns only the id and full name columns
+reset role;
+select pg_get_function_result('public.member_names(uuid[])'::regprocedure) = 'TABLE(id uuid, full_name text)' as pass;
+
+-- CHECK member_names does not name pending applicants
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 0 as pass from public.member_names(array['00000000-0000-0000-0000-00000000000e']::uuid[]);
+
+-- CHECK member_names gives a pending applicant nothing
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
+select count(*) = 0 as pass from public.member_names(array['00000000-0000-0000-0000-00000000000c']::uuid[]);
+
+-- CHECK member_names is not callable by anon [error]
+set role anon;
+select * from public.member_names(array['00000000-0000-0000-0000-00000000000c']::uuid[]);

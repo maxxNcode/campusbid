@@ -35,6 +35,18 @@ function draftToColumns(draft: ListingDraft) {
   }
 }
 
+// Names of approved members, keyed by id. Other members' profile rows are
+// not readable, so names come from the narrow member_names() function.
+export async function fetchMemberNames(ids: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(ids)]
+  const names = new Map<string, string>()
+  if (unique.length === 0) return names
+  const { data, error } = await supabase.rpc('member_names', { member_ids: unique })
+  if (error) throw error
+  for (const member of data) names.set(member.id, member.full_name)
+  return names
+}
+
 export async function uploadListingPhoto(userId: string, file: File): Promise<string> {
   const path = generatedPhotoPath(userId, file.type)
   const { error } = await supabase.storage

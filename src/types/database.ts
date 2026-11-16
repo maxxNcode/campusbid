@@ -227,6 +227,13 @@ export type Database = {
         Args: { path: string }
         Returns: boolean
       }
+      member_names: {
+        Args: { member_ids: string[] }
+        Returns: {
+          id: string
+          full_name: string
+        }[]
+      }
       pending_accounts: {
         Args: Record<PropertyKey, never>
         Returns: {

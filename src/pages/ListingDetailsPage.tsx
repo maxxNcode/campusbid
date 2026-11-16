@@ -3,13 +3,14 @@ import { Link, useLocation, useParams } from 'react-router'
 import { useAuth } from '../lib/auth-context'
 import { formatManilaDateTime } from '../lib/format'
 import { CONDITION_LABELS, LISTING_STATUS_LABELS, formatPeso } from '../lib/listing-rules'
-import { fetchCategories, fetchListing, signedPhotoUrls } from '../lib/listings'
+import { fetchCategories, fetchListing, fetchMemberNames, signedPhotoUrls } from '../lib/listings'
 import ListingPhoto from '../components/ListingPhoto'
 import type { Listing } from '../types/database'
 
 type Details = {
   listing: Listing
   categoryName: string
+  sellerName: string
   photoUrl?: string
 }
 
@@ -32,8 +33,9 @@ export default function ListingDetailsPage() {
           if (!cancelled) setState({ kind: 'missing' })
           return
         }
-        const [categories, urls] = await Promise.all([
+        const [categories, names, urls] = await Promise.all([
           fetchCategories(),
+          fetchMemberNames([listing.seller_id]),
           signedPhotoUrls(listing.photo_path ? [listing.photo_path] : []),
         ])
         if (cancelled) return
@@ -42,6 +44,7 @@ export default function ListingDetailsPage() {
           details: {
             listing,
             categoryName: categories.find((category) => category.id === listing.category_id)?.name ?? 'Uncategorised',
+            sellerName: names.get(listing.seller_id) ?? 'A CampusBid member',
             photoUrl: listing.photo_path ? urls.get(listing.photo_path) : undefined,
           },
         })
@@ -67,7 +70,7 @@ export default function ListingDetailsPage() {
     )
   }
 
-  const { listing, categoryName, photoUrl } = state.details
+  const { listing, categoryName, sellerName, photoUrl } = state.details
   const isOwner = listing.seller_id === session?.user.id
 
   return (
@@ -111,6 +114,8 @@ export default function ListingDetailsPage() {
                 <dd className="col-sm-8">{listing.included_parts}</dd>
               </>
             )}
+            <dt className="col-sm-4">Seller</dt>
+            <dd className="col-sm-8">{isOwner ? 'You' : sellerName}</dd>
             <dt className="col-sm-4">Listed</dt>
             <dd className="col-sm-8">{formatManilaDateTime(listing.created_at)}</dd>
           </dl>
