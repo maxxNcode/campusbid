@@ -75,10 +75,38 @@ Screens checked with stubbed responses: the Sell form's validation messages (inp
 
 Not run: the integration tests, the seed (ten demo listings with placeholder photos) and any upload to real Storage, so the bucket's size and type limits have not been seen refusing a file.
 
+## Checks run on 2026-11-16 after the Day 2 review (about 19:45)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| TypeScript | `npm run typecheck` | Passed, no errors |
+| Lint | `npm run lint` | Passed, no warnings |
+| Production build | `npm run build` | Passed |
+| Tests | `npm test` | 4 passed, 41 skipped: no Supabase project |
+| Offline SQL checks | `npm run test:offline` (eight migrations) | 80 of 80 passed |
+
+Changes to the offline harness: the stand-in grants now copy Supabase's defaults as they are set for the `postgres` and `supabase_admin` roles, the harness refuses to run unless migrations run as `postgres`, and `SKIP_MIGRATION=<part of a file name>` leaves one migration out. The pg_trgm extension is loaded so a check can create it.
+
+New offline checks (11):
+
+- A function created after the migrations has no EXECUTE for `anon`, `authenticated` or PUBLIC (`has_function_privilege` and the function's ACL), but `service_role` keeps it.
+- Control: a function created by `supabase_admin` still gets the stand-in grants, so the model is live and the check above can fail.
+- With pg_trgm created after the revoke, a trigram index still serves an `ilike` search for a signed-in member; calling `similarity()` directly is not allowed without a grant. The app does not call it.
+- A listing without a photo is refused, and an edit cannot remove the photo.
+- A seller cannot delete the photo of their own available or sold listing, or point a sold listing at a new photo; they can delete an upload of their own that no listing uses.
+
+Every existing check that inserts a listing now sends a valid photo path, so the checks expected to fail still fail for their own reason (seller, status, price, defects, approval), and the run output shows each error message.
+
+Mutation runs: with `SKIP_MIGRATION=revoke_default_function` five checks fail (both "not callable" checks, the new privilege check, the `similarity()` check and "member_names is not callable by anon"). With `SKIP_MIGRATION=keep_listing_photos` four fail (both missing-photo checks and both photo-delete checks).
+
+New integration tests (not run, no project): a listing without a photo is refused, and the seller cannot delete or remove the photo of their withdrawn listing. Every listing insert in the suites now sends a photo path.
+
 ## Setup checklist once the project exists
 
 1. Apply all migrations in `supabase/migrations/` in filename order. They also create the private `listing-photos` bucket.
 2. Turn off "Confirm email" in Supabase Auth. The migrations and seed cannot set this. If it stays on, registration shows "Check your email" and new accounts cannot sign in until they confirm, and the sign-up test in `npm test` gets no session.
 3. Set `CAMPUSBID_ENVIRONMENT=development` in `.env` and run `npm run seed`.
 4. Run `npm test` and record the real result here.
-5. Sign in as each demo account in two browser sessions and approve the pending applicant.
+5. In the SQL editor, list the functions in `public` that visitors can call. The expected answer is no rows:
+   `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');`
+6. Sign in as each demo account in two browser sessions and approve the pending applicant.
