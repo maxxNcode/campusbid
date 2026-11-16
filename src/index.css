@@ -2,3 +2,32 @@
 .form-narrow {
   max-width: 28rem;
 }
+
+.form-wide {
+  max-width: 44rem;
+}
+
+/* Listing photos keep a 4:3 box so cards line up with or without a photo. */
+.listing-photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--bs-secondary-bg);
+}
+
+.listing-photo-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bs-secondary-color);
+  border: 1px dashed var(--bs-border-color);
+}
+
+.listing-photo-small {
+  max-width: 12rem;
+}
+
+.listing-description {
+  white-space: pre-line;
+}

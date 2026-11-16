@@ -67,8 +67,8 @@ select public.review_account('00000000-0000-0000-0000-00000000000d','approved');
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
 select * from public.pending_accounts();
 
--- CHECK buyer cannot insert listing [error]
-set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+-- CHECK pending user cannot insert listing [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
 insert into public.listings (category_id, program, title, description, price, condition, known_defects) values (1,'BS IT','Thing','A thing for sale here',10,'good','None');
 
 -- CHECK admin lists pending accounts with email
@@ -144,3 +144,119 @@ select public.later_rpc() = 1 as pass;
 -- CHECK existing helper functions still work for signed-in users
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
 select public.current_user_is_approved() as pass;
+
+-- Phase 2: listing writes and listing photos.
+-- Users: b = approved buyer, c = approved seller, e = pending applicant.
+
+-- CHECK seller creates a listing; seller and status come from the defaults
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+insert into public.listings (category_id, program, title, description, price, condition, known_defects, photo_path)
+ values (1, 'BS Information Technology', 'Drafting set', 'Complete drafting set in a case', 450.50, 'good', 'One compass leg is loose',
+         '00000000-0000-0000-0000-00000000000c/11111111-1111-1111-1111-111111111111.jpg');
+select (seller_id = '00000000-0000-0000-0000-00000000000c' and status = 'active' and price = 450.50) as pass
+ from public.listings where title = 'Drafting set';
+
+-- CHECK a client cannot choose the seller of a new listing [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects)
+ values ('00000000-0000-0000-0000-00000000000c', 1, 'BS Civil Engineering', 'Posing as seller', 'Listing under another member', 10, 'good', 'None');
+
+-- CHECK a client cannot create a listing that is already sold [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+insert into public.listings (status, category_id, program, title, description, price, condition, known_defects)
+ values ('sold', 1, 'BS Civil Engineering', 'Pre-sold', 'Listing that starts as sold', 10, 'good', 'None');
+
+-- CHECK a listing cannot point at another member's photo [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+insert into public.listings (category_id, program, title, description, price, condition, known_defects, photo_path)
+ values (1, 'BS Civil Engineering', 'Borrowed photo', 'Uses the seller photo path', 10, 'good', 'None',
+         '00000000-0000-0000-0000-00000000000c/11111111-1111-1111-1111-111111111111.jpg');
+
+-- CHECK pending applicant still cannot create a listing [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
+insert into public.listings (category_id, program, title, description, price, condition, known_defects)
+ values (1, 'BS Civil Engineering', 'Pending item', 'Listing from a pending user', 10, 'good', 'None');
+
+-- CHECK zero price rejected [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+insert into public.listings (category_id, program, title, description, price, condition, known_defects)
+ values (1, 'BS Information Technology', 'Free item', 'Price of zero pesos', 0, 'good', 'None');
+
+-- CHECK known defects are required [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+insert into public.listings (category_id, program, title, description, price, condition, known_defects)
+ values (1, 'BS Information Technology', 'No disclosure', 'Defects left blank here', 50, 'good', ' ');
+
+-- CHECK buyer cannot edit the seller's listing (0 rows changed)
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+update public.listings set price = 1 where title = 'Drafting set';
+reset role;
+select price = 450.50 as pass from public.listings where title = 'Drafting set';
+
+-- CHECK seller edits own active listing
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+update public.listings set price = 400, known_defects = 'One compass leg is loose; eraser shield bent' where title = 'Drafting set';
+select (price = 400.00 and updated_at >= created_at) as pass from public.listings where title = 'Drafting set';
+
+-- CHECK seller cannot change status directly [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+update public.listings set status = 'sold' where title = 'Drafting set';
+
+-- CHECK seller cannot hand a listing to another member [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+update public.listings set seller_id = '00000000-0000-0000-0000-00000000000b' where title = 'Drafting set';
+
+-- CHECK seller cannot edit own sold listing (0 rows changed)
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+update public.listings set price = 1 where id = 1;
+reset role;
+select price = 650.00 as pass from public.listings where id = 1;
+
+-- CHECK photo bucket is private with a size limit and image types only
+select (public = false and file_size_limit = 5242880
+        and allowed_mime_types = array['image/jpeg','image/png','image/webp']) as pass
+ from storage.buckets where id = 'listing-photos';
+
+-- CHECK seller uploads a photo with a generated name into own folder
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+insert into storage.objects (bucket_id, name) values
+ ('listing-photos', '00000000-0000-0000-0000-00000000000c/11111111-1111-1111-1111-111111111111.jpg');
+select count(*) = 1 as pass from storage.objects;
+
+-- CHECK upload into another member's folder is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+insert into storage.objects (bucket_id, name) values
+ ('listing-photos', '00000000-0000-0000-0000-00000000000c/22222222-2222-2222-2222-222222222222.jpg');
+
+-- CHECK upload under a chosen file name is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+insert into storage.objects (bucket_id, name) values
+ ('listing-photos', '00000000-0000-0000-0000-00000000000c/my-calculator.jpg');
+
+-- CHECK upload with a non-image extension is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+insert into storage.objects (bucket_id, name) values
+ ('listing-photos', '00000000-0000-0000-0000-00000000000c/33333333-3333-3333-3333-333333333333.exe');
+
+-- CHECK pending applicant cannot upload [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
+insert into storage.objects (bucket_id, name) values
+ ('listing-photos', '00000000-0000-0000-0000-00000000000e/44444444-4444-4444-4444-444444444444.png');
+
+-- CHECK approved buyer can see the photo
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 1 as pass from storage.objects;
+
+-- CHECK pending applicant cannot see the photo
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
+select count(*) = 0 as pass from storage.objects;
+
+-- CHECK anonymous visitor cannot see the photo
+set role anon;
+select count(*) = 0 as pass from storage.objects;
+
+-- CHECK buyer cannot delete the seller's photo (0 rows)
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+delete from storage.objects;
+reset role;
+select count(*) = 1 as pass from storage.objects;

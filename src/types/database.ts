@@ -223,6 +223,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      listing_photo_path_is_own: {
+        Args: { path: string }
+        Returns: boolean
+      }
       pending_accounts: {
         Args: Record<PropertyKey, never>
         Returns: {
