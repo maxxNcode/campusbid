@@ -141,6 +141,47 @@ grant execute on function public.later_rpc() to authenticated;
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
 select public.later_rpc() = 1 as pass;
 
+-- CHECK a new function in public has no EXECUTE for anon, authenticated or PUBLIC
+reset role;
+create function public.later_rpc_two() returns int language sql as $$ select 2 $$;
+select not has_function_privilege('anon', 'public.later_rpc_two()', 'execute')
+   and not has_function_privilege('authenticated', 'public.later_rpc_two()', 'execute')
+   and not exists (select 1 from aclexplode((select proacl from pg_proc where proname = 'later_rpc_two')) a where a.grantee = 0)
+   and has_function_privilege('service_role', 'public.later_rpc_two()', 'execute') as pass;
+
+-- CHECK control: the default grants are live, so the checks above can fail
+-- A function owned by supabase_admin is not covered by the postgres-only
+-- default-privilege change, so the stand-in grants still reach anon.
+reset role;
+set role supabase_admin;
+create function public.admin_owned_rpc() returns int language sql as $$ select 3 $$;
+reset role;
+select has_function_privilege('anon', 'public.admin_owned_rpc()', 'execute')
+   and has_function_privilege('authenticated', 'public.admin_owned_rpc()', 'execute') as pass;
+
+-- CHECK a pg_trgm index still serves the ilike search for signed-in users
+-- The PUBLIC revoke also covers extension functions created by postgres. The
+-- planned trigram index works, because index support functions need no EXECUTE.
+reset role;
+create extension pg_trgm;
+create index listings_title_trgm on public.listings using gin (title public.gin_trgm_ops);
+set enable_seqscan = off;
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 1 as pass from public.listings where title ilike '%casio%';
+
+-- CHECK calling a pg_trgm function directly needs an explicit grant
+reset role;
+set enable_seqscan = on;
+select not has_function_privilege('authenticated', 'public.similarity(text,text)', 'execute') as pass;
+
+-- CHECK clean up the pg_trgm test objects
+reset role;
+drop index public.listings_title_trgm;
+drop extension pg_trgm;
+drop function public.admin_owned_rpc();
+drop function public.later_rpc_two();
+select true as pass;
+
 -- CHECK existing helper functions still work for signed-in users
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
 select public.current_user_is_approved() as pass;
