@@ -6,7 +6,7 @@ Team: Mark Froilan Lendio (leader), John Nicholas De La Calzada, Rene James Aleo
 
 ## Current status
 
-Phase 1 of the build (accounts and approval) is implemented. Listings and purchase requests are not built yet. The screens are temporary functional pages with plain Bootstrap styling; the team will supply the visual design. See `docs/progress.md` for the dated log and `docs/scope.md` for feature status.
+Phases 1 and 2 of the build (accounts and approval, then listings) are implemented. Purchase requests are not built yet. The screens are temporary functional pages with plain Bootstrap styling; the team will supply the visual design. See `docs/progress.md` for the dated log and `docs/scope.md` for feature status.
 
 What works now:
 
@@ -14,7 +14,12 @@ What works now:
 - New accounts start as pending. Pending and rejected users see a status page and cannot browse.
 - An admin-only page lists pending applicants and approves or rejects them, recording who reviewed and when.
 - Database tables, Row Level Security and the admin review function (`supabase/migrations/`).
-- A seed script for categories and fictional demo accounts.
+- Approved members can list an item with a photo, price in pesos, condition, known defects, model or edition and included or missing parts, and edit it while it is available.
+- Browse: keyword search, category and program filters, newest first, 12 per page, with empty states. Only available items show unless "Also show reserved items" is ticked.
+- Item details page with the seller's name. Purchase requests arrive in the next phase, and the page says so.
+- My Listings with Available, Reserved, Sold and Withdrawn filters, and a Withdraw that asks for confirmation and keeps request history.
+- Photos are stored in a private bucket that only approved members can read; uploads get generated names and must be JPEG, PNG or WebP up to 5 MB.
+- A seed script for categories, fictional demo accounts and ten demo listings.
 
 ## Stack and versions
 
@@ -71,7 +76,11 @@ Exact dependency versions are locked in `package-lock.json`.
 | buyer@example.test | Carla Mendoza | Approved student (BS CE, Year 1) |
 | pending@example.test | Miguel Tan | Pending applicant (BS ME, Year 3) |
 
-Running the seed again resets these accounts, including putting the pending applicant back to pending.
+Running the seed again resets these accounts, including putting the pending applicant back to pending, and replaces the demo listings.
+
+### Demo listings
+
+The seed adds ten fictional listings from the seller and buyer accounts: seven available, two sold (each with a completed request from the buyer) and one withdrawn. Their photos in `scripts/seed-photos/` are plain grey placeholders that read "PLACEHOLDER IMAGE" and "Demo listing. Not a photo of a real item." They are not photos of real items and are not pilot results.
 
 ### Regenerating database types
 
@@ -97,11 +106,11 @@ npm run test:offline  # SQL access checks on a local in-memory Postgres (no proj
 
 ## Main flow
 
-Planned demo flow: a seller lists an item with a photo and details, a buyer finds it and sends a purchase request with a proposed campus meetup, the seller accepts (the listing becomes reserved), and after the handover the seller marks it completed (the listing becomes sold). Only the account and approval part exists so far.
+Planned demo flow: a seller lists an item with a photo and details, a buyer finds it and sends a purchase request with a proposed campus meetup, the seller accepts (the listing becomes reserved), and after the handover the seller marks it completed (the listing becomes sold). Accounts, approval and the listing side (sell, browse, view, edit, withdraw) exist so far; requests come next.
 
 ## Known limitations
 
-See `docs/known-issues.md`. In short: listings, photos, search and purchase requests are not built yet, and the integration tests have not yet been run against a Supabase project.
+See `docs/known-issues.md`. In short: purchase requests are not built yet, and the integration tests and seed have not yet been run against a Supabase project.
 
 ## Credits
 

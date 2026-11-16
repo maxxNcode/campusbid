@@ -6,15 +6,20 @@ CampusBid is a single-page React application (TypeScript, Vite, React Router) th
 Browser (React SPA)  --supabase-js-->  Supabase
                                          Auth      email and password accounts
                                          Postgres  tables, RLS policies, functions
-                                         Storage   listing photos (Phase 2)
+                                         Storage   listing photos (private bucket)
 ```
 
 The browser is untrusted. It holds only the project URL and the anon key, so every rule is enforced in Postgres:
 
 - **Row Level Security** on every table decides which rows each signed-in user can read or change.
-- **Column privileges** limit what a user may update. On `profiles`, users may change only their name, program and year level.
+- **Column privileges** limit what a user may write. On `profiles`, users may change only their name, program and year level. On `listings`, they may write the descriptive fields only; `seller_id` comes from its default (`auth.uid()`) and `status` starts as `active`, and neither column can be sent by a client.
 - **Triggers.** `handle_new_user` creates a pending, non-admin profile for every new auth user and ignores any approval or admin values sent from the form. `protect_profile_review_fields` raises an error if a signed-in user tries to change approval or admin fields directly.
-- **Functions** for actions that need checks or touch several rows. `review_account()` checks that the caller is an approved admin, locks the target row, and records the reviewer and time. Listing and request status changes (accept, cancel, complete) will also be functions, so each runs in one transaction with the listing row locked.
+- **Functions** for actions that need checks or touch several rows. `review_account()` checks that the caller is an approved admin, locks the target row, and records the reviewer and time. `withdraw_listing()` locks the listing row, checks the caller owns it and that it is still available, cancels its pending requests with a reason and marks it withdrawn. The request status changes in Phase 3 (accept, cancel, complete) will follow the same pattern and lock order: the listing row first, then its requests.
+- **Narrow read function.** Members read only their own profile row. Seller names come from `member_names()`, which returns just the id and full name of approved members to an approved caller.
+
+## Listing photos
+
+Photos live in the private `listing-photos` bucket. The bucket allows JPEG, PNG and WebP up to 5 MB; Storage refuses anything else. Storage policies let approved members read photos, and let them upload only into a folder named after their own user id under a generated name (`<user id>/<random uuid>.<jpg|png|webp>`), so the uploader's file name is never used. A listing's `photo_path` must point into the seller's own folder. The browser shows photos through signed links that expire after an hour. The form checks type and size before uploading, for a clear message.
 
 ## Data
 
@@ -39,10 +44,12 @@ Times are stored as `timestamptz` and shown in Asia/Manila time (`src/lib/format
 ```text
 src/pages/            one component per screen
 src/components/       layout, route guards, auth provider
-src/lib/              Supabase client and small data functions
+src/lib/              Supabase client, data functions, listing rules and search
 src/types/            database types
 supabase/migrations/  tables, indexes, RLS policies, functions
-scripts/              seed script (service-role key, local only)
+scripts/              seed script and demo data (service-role key, local only)
+scripts/seed-photos/  plain labelled placeholder images for the demo listings
 tests/                Vitest integration tests against the real project
+tests/offline/        SQL checks of the migrations on in-memory Postgres
 docs/
 ```

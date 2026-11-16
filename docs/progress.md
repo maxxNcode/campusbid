@@ -59,3 +59,27 @@ The Day 1 review found no blockers and three should-fix items, all fixed:
 Minor review items not changed: profile column exposure and the Phase 3 request checks are recorded in `docs/known-issues.md`; re-approving a rejected account is a team decision and stays documented; the raw error for malformed direct API sign-ups does not affect the app's form.
 
 Next: the team creates the Supabase project, then the migrations, seed and tests are run for real. Phase 2 (listings) waits for review.
+
+## 2026-11-16, Day 2: Phase 2 (listings)
+
+Session from about 19:10 to 19:35. Still no Supabase project, so everything was checked offline (see `docs/testing.md`).
+
+| Commit | Change |
+| --- | --- |
+| 1bf32c5 | Listing insert/edit rules, private photo bucket and its policies; Sell an Item form with photo upload; item details page |
+| 9ffbfab | Browse: keyword search, category and program filters, reserved toggle, pagination, empty states; seller names through `member_names()`; profile rows no longer readable by other members |
+| b6fc8d1 | `withdraw_listing()`; My Listings with a status filter and a confirmed Withdraw |
+| d8912b8 | Seed: ten demo listings with placeholder photos (seven available, two sold, one withdrawn) |
+| 23ac664 | Integration tests for checks 3, 11 and 12, plus form checks that run without a project |
+
+Decisions:
+
+- Clients send only the descriptive listing fields. The seller is always the signed-in user and every new listing starts as available; status changes go through database functions.
+- Only available listings can be edited, so nothing changes under a buyer once a listing is reserved.
+- Withdrawing cancels pending requests with a reason instead of deleting them, so the history stays. A withdrawn listing cannot be reopened.
+- Browse shows available items only. "Also show reserved items" adds reserved ones; sold and withdrawn items appear only in the seller's My Listings and to buyers who requested them.
+- Keyword search requires every word to appear in the title, description or model/edition. Punctuation is removed before the query is built.
+- Photos are optional when editing (the current one is kept) but required when creating a listing, as the specification lists a photo among the listing fields.
+- Request buttons are not shown. The item page says requests arrive in the next phase.
+
+The offline checks found a mistake in their own setup: a Day 1 check that is expected to fail had rolled back the creation of a second pending applicant, so the first Phase 2 checks for that applicant passed without the user existing. The setup now creates the applicant in its own block (commit 9ffbfab). The Day 1 check "buyer cannot insert listing" became "pending user cannot insert listing", because approved members may now create listings.

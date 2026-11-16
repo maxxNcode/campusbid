@@ -4,7 +4,7 @@ Only checks that actually ran are marked as passed.
 
 ## Supabase integration tests (`npm test`)
 
-**Status: written, not yet run against Supabase.** The team's Supabase project did not exist on 2026-11-12, so the suite reported its 17 tests as skipped.
+**Status: written, not yet run against Supabase.** The team's Supabase project did not exist on 2026-11-12 or 2026-11-16, so the suite reports its 39 Supabase tests as skipped (17 from Day 1, 22 from Day 2).
 
 `tests/account-access.test.ts` covers handoff checks 1 and 2. It signs in as the seeded buyer, seller and admin and as a throwaway applicant, each in its own client, and checks that:
 
@@ -17,6 +17,14 @@ Only checks that actually ran are marked as passed.
 - The admin can approve, the reviewer and time are recorded, and a second review of the same account is refused.
 
 The suite creates one listing and two auth users and deletes them afterwards.
+
+`tests/listings.test.ts` covers handoff checks 3, 11 and 12:
+
+- Check 3: another member cannot edit or withdraw a listing, or create one in someone else's name; the seller cannot set the status directly; the seller can edit their own available listing; withdraw cancels pending requests but keeps them, and a withdrawn listing cannot be withdrawn again or edited.
+- Check 11: the database rejects a zero or negative price and a missing defects disclosure; a small PNG under a generated name in the seller's folder is accepted; a disallowed file type, a file over 5 MB, an upload into another member's folder or under a chosen name, and an upload from a pending applicant are refused; a listing cannot point at another member's photo.
+- Check 12: available matches come newest first without sold, withdrawn or reserved ones; keyword, category and program filters combine; reserved listings appear only when asked; every keyword word must match; punctuation is treated as plain text; a page past the last is empty; a pending applicant sees nothing.
+
+Four checks need no project and ran and passed: allowed photo types and size, generated photo names, price format, and search-word cleaning.
 
 ## Checks run on 2026-11-12
 
@@ -48,9 +56,28 @@ Screens were not changed by the fixes and were not re-shot.
 
 Limitations: the offline Postgres check and the stubbed screen check do not prove behaviour on hosted Supabase. The offline harness is now in the repository (`tests/offline/`) and can be re-run with `npm run test:offline`. The seed script has not run against a project.
 
+## Checks run on 2026-11-16 (Day 2, about 19:31)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| TypeScript | `npm run typecheck` | Passed, no errors |
+| Lint | `npm run lint` | Passed, no warnings |
+| Production build | `npm run build` | Passed |
+| Tests | `npm test` | 4 passed (form checks), 39 skipped: no Supabase project |
+| Offline SQL checks | `npm run test:offline` (all seven migrations) | 69 of 69 passed |
+| Screens with stubbed Supabase responses | Browser run at 1280 px and 360 px wide | See below |
+
+The 40 new offline checks cover listing insert and edit rules (own seller id, active status, descriptive columns only, no edits once reserved), the photo bucket settings and storage policies (approved read, own-folder upload with a generated name, own-folder delete), `member_names()` (approved callers only, names of approved members only, id and name only), the narrower profile read rule and `withdraw_listing()` (owner only, available only, pending requests cancelled with a reason and kept).
+
+The first Day 2 commit (1bf32c5) had four checks for a second pending applicant that passed without the applicant existing: an earlier check that is expected to fail had rolled back the insert. Commit 9ffbfab creates the applicant in its own setup block, and those checks now run against a real row.
+
+Screens checked with stubbed responses: the Sell form's validation messages (input kept), publishing and the success banner, editing, the blocked page for someone else's or a reserved listing, Browse with search, filters, pagination and each empty state, and My Listings with the status filter and a confirmed Withdraw. No horizontal scrolling at 360 px.
+
+Not run: the integration tests, the seed (ten demo listings with placeholder photos) and any upload to real Storage, so the bucket's size and type limits have not been seen refusing a file.
+
 ## Setup checklist once the project exists
 
-1. Apply all migrations in `supabase/migrations/` in filename order.
+1. Apply all migrations in `supabase/migrations/` in filename order. They also create the private `listing-photos` bucket.
 2. Turn off "Confirm email" in Supabase Auth. The migrations and seed cannot set this. If it stays on, registration shows "Check your email" and new accounts cannot sign in until they confirm, and the sign-up test in `npm test` gets no session.
 3. Set `CAMPUSBID_ENVIRONMENT=development` in `.env` and run `npm run seed`.
 4. Run `npm test` and record the real result here.
