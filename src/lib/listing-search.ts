@@ -1,7 +1,8 @@
 // Marketplace search. Takes the Supabase client as an argument so the
 // integration tests run exactly the query the Browse page runs.
+// The tests load this file too, hence the .ts extension on imports.
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Listing } from '../types/database'
+import type { Database, Listing } from '../types/database.ts'
 
 export const PAGE_SIZE = 12
 const MAX_KEYWORD_WORDS = 5

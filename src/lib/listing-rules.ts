@@ -1,6 +1,7 @@
-// Listing labels, limits and form checks shared by the screens, the seed
-// script and the tests. Nothing here talks to Supabase.
-import type { Database } from '../types/database'
+// Listing labels, limits and form checks shared by the screens and the
+// tests. Nothing here talks to Supabase.
+// The tests load this file too, hence the .ts extension on imports.
+import type { Database } from '../types/database.ts'
 
 export type ItemCondition = Database['public']['Enums']['item_condition']
 export type ListingStatus = Database['public']['Enums']['listing_status']
