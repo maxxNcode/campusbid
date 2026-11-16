@@ -74,11 +74,28 @@ describe.skipIf(!supabaseConfigured)('listings, photos and search', () => {
   // Check 3
   describe('listing ownership', () => {
     let listingId: number
+    let ownershipPhoto: string
+
+    async function photoExists(path: string) {
+      const [folder, file] = path.split('/')
+      const { data } = await service.storage.from(BUCKET).list(folder, { search: file })
+      return (data ?? []).some((entry) => entry.name === file)
+    }
 
     beforeAll(async () => {
+      ownershipPhoto = generatedPhotoPath(seller.userId, 'image/png')
+      const upload = await seller.client.storage.from(BUCKET).upload(ownershipPhoto, TINY_PNG, { contentType: 'image/png' })
+      if (upload.error) throw new Error(`Seller could not upload a photo: ${upload.error.message}`)
+      createdPhotoPaths.push(ownershipPhoto)
       const { data, error } = await seller.client
         .from('listings')
-        .insert({ ...baseListing, category_id: calculatorsId, title: 'Test listing for ownership', price: 500 })
+        .insert({
+          ...baseListing,
+          category_id: calculatorsId,
+          title: 'Test listing for ownership',
+          price: 500,
+          photo_path: ownershipPhoto,
+        })
         .select()
         .single()
       if (error) throw new Error(`Seller could not create a listing: ${error.message}`)
@@ -102,7 +119,14 @@ describe.skipIf(!supabaseConfigured)('listings, photos and search', () => {
     it('does not let a member create a listing in another seller\'s name', async () => {
       const { error } = await buyer.client
         .from('listings')
-        .insert({ ...baseListing, seller_id: seller.userId, category_id: calculatorsId, title: 'Posing as seller', price: 10 })
+        .insert({
+          ...baseListing,
+          seller_id: seller.userId,
+          category_id: calculatorsId,
+          title: 'Posing as seller',
+          price: 10,
+          photo_path: generatedPhotoPath(buyer.userId, 'image/png'),
+        })
       expect(error).not.toBeNull()
     })
 
@@ -154,6 +178,13 @@ describe.skipIf(!supabaseConfigured)('listings, photos and search', () => {
       const { data } = await seller.client.from('listings').update({ price: 1 }).eq('id', listingId).select()
       expect(data ?? []).toEqual([])
     })
+
+    it('keeps the photo of a closed listing even if its seller tries to delete it', async () => {
+      await seller.client.storage.from(BUCKET).remove([ownershipPhoto])
+      expect(await photoExists(ownershipPhoto)).toBe(true)
+      const replace = await seller.client.from('listings').update({ photo_path: null }).eq('id', listingId).select()
+      expect(replace.data ?? []).toEqual([])
+    })
   })
 
   // Check 11
@@ -162,7 +193,7 @@ describe.skipIf(!supabaseConfigured)('listings, photos and search', () => {
       for (const price of [-5, 0]) {
         const { error } = await seller.client
           .from('listings')
-          .insert({ ...baseListing, category_id: calculatorsId, title: 'Bad price listing', price })
+          .insert({ ...baseListing, category_id: calculatorsId, title: 'Bad price listing', price, photo_path: generatedPhotoPath(seller.userId, 'image/png') })
         expect(error, `price ${price}`).not.toBeNull()
       }
     })
@@ -170,7 +201,21 @@ describe.skipIf(!supabaseConfigured)('listings, photos and search', () => {
     it('rejects a listing without a known-defects disclosure', async () => {
       const { error } = await seller.client
         .from('listings')
-        .insert({ ...baseListing, known_defects: ' ', category_id: calculatorsId, title: 'No disclosure', price: 50 })
+        .insert({
+          ...baseListing,
+          known_defects: ' ',
+          category_id: calculatorsId,
+          title: 'No disclosure',
+          price: 50,
+          photo_path: generatedPhotoPath(seller.userId, 'image/png'),
+        })
+      expect(error).not.toBeNull()
+    })
+
+    it('rejects a listing without a photo', async () => {
+      const { error } = await seller.client
+        .from('listings')
+        .insert({ ...baseListing, category_id: calculatorsId, title: 'No photo', price: 50 })
       expect(error).not.toBeNull()
     })
 
@@ -250,7 +295,13 @@ describe.skipIf(!supabaseConfigured)('listings, photos and search', () => {
     ) {
       const { data, error } = await service
         .from('listings')
-        .insert({ ...baseListing, ...fields, seller_id: seller.userId, price: 100 })
+        .insert({
+          ...baseListing,
+          ...fields,
+          seller_id: seller.userId,
+          price: 100,
+          photo_path: generatedPhotoPath(seller.userId, 'image/png'),
+        })
         .select('id')
         .single()
       if (error) throw new Error(`Could not create ${key}: ${error.message}`)

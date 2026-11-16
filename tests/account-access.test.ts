@@ -53,6 +53,7 @@ describe.skipIf(!supabaseConfigured)('account approval and access', () => {
         price: 100,
         condition: 'good',
         known_defects: 'None known',
+        photo_path: `${seller.userId}/${crypto.randomUUID()}.png`,
       })
       .select('id')
       .single()
@@ -137,6 +138,7 @@ describe.skipIf(!supabaseConfigured)('account approval and access', () => {
           price: 50,
           condition: 'good',
           known_defects: 'None known',
+          photo_path: `${applicant.userId}/${crypto.randomUUID()}.png`,
         })
         .select('id')
       expect(error).not.toBeNull()

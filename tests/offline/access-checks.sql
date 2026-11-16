@@ -12,8 +12,9 @@ set role service_role;
 update public.profiles set approval_status='approved', is_admin=true, reviewed_at=now() where id='00000000-0000-0000-0000-00000000000a';
 update public.profiles set approval_status='approved', reviewed_by='00000000-0000-0000-0000-00000000000a', reviewed_at=now() where id in ('00000000-0000-0000-0000-00000000000b','00000000-0000-0000-0000-00000000000c');
 insert into public.categories (name, slug) values ('Calculators','calculators');
-insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects)
- values ('00000000-0000-0000-0000-00000000000c', 1, 'BS Information Technology', 'Casio fx-991ES', 'Scientific calculator, works well', 650.00, 'good', 'None known');
+insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects, photo_path)
+ values ('00000000-0000-0000-0000-00000000000c', 1, 'BS Information Technology', 'Casio fx-991ES', 'Scientific calculator, works well', 650.00, 'good', 'None known',
+         '00000000-0000-0000-0000-00000000000c/55555555-5555-5555-5555-555555555555.jpg');
 reset role;
 select (select count(*) from public.profiles) = 4 as pass;
 
@@ -69,7 +70,7 @@ select * from public.pending_accounts();
 
 -- CHECK pending user cannot insert listing [error]
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
-insert into public.listings (category_id, program, title, description, price, condition, known_defects) values (1,'BS IT','Thing','A thing for sale here',10,'good','None');
+insert into public.listings (category_id, program, title, description, price, condition, known_defects, photo_path) values (1,'BS IT','Thing','A thing for sale here',10,'good','None','00000000-0000-0000-0000-00000000000d/77777777-7777-7777-7777-777777777777.jpg');
 
 -- CHECK admin lists pending accounts with email
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
@@ -90,8 +91,8 @@ set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000
 select public.review_account('00000000-0000-0000-0000-00000000000a','rejected');
 
 -- CHECK negative price rejected [error]
-insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects)
- values ('00000000-0000-0000-0000-00000000000c', 1, 'BS IT', 'Bad price', 'This has a negative price', -5, 'good', 'None known');
+insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects, photo_path)
+ values ('00000000-0000-0000-0000-00000000000c', 1, 'BS IT', 'Bad price', 'This has a negative price', -5, 'good', 'None known', '00000000-0000-0000-0000-00000000000c/77777777-7777-7777-7777-777777777777.jpg');
 
 -- CHECK trigger alone blocks self-approval even if a column grant is added by mistake [error]
 reset role;
@@ -204,13 +205,13 @@ select (seller_id = '00000000-0000-0000-0000-00000000000c' and status = 'active'
 
 -- CHECK a client cannot choose the seller of a new listing [error]
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
-insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects)
- values ('00000000-0000-0000-0000-00000000000c', 1, 'BS Civil Engineering', 'Posing as seller', 'Listing under another member', 10, 'good', 'None');
+insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects, photo_path)
+ values ('00000000-0000-0000-0000-00000000000c', 1, 'BS Civil Engineering', 'Posing as seller', 'Listing under another member', 10, 'good', 'None', '00000000-0000-0000-0000-00000000000b/77777777-7777-7777-7777-777777777777.jpg');
 
 -- CHECK a client cannot create a listing that is already sold [error]
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
-insert into public.listings (status, category_id, program, title, description, price, condition, known_defects)
- values ('sold', 1, 'BS Civil Engineering', 'Pre-sold', 'Listing that starts as sold', 10, 'good', 'None');
+insert into public.listings (status, category_id, program, title, description, price, condition, known_defects, photo_path)
+ values ('sold', 1, 'BS Civil Engineering', 'Pre-sold', 'Listing that starts as sold', 10, 'good', 'None', '00000000-0000-0000-0000-00000000000b/77777777-7777-7777-7777-777777777777.jpg');
 
 -- CHECK a listing cannot point at another member's photo [error]
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
@@ -220,18 +221,27 @@ insert into public.listings (category_id, program, title, description, price, co
 
 -- CHECK pending applicant still cannot create a listing [error]
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
-insert into public.listings (category_id, program, title, description, price, condition, known_defects)
- values (1, 'BS Civil Engineering', 'Pending item', 'Listing from a pending user', 10, 'good', 'None');
+insert into public.listings (category_id, program, title, description, price, condition, known_defects, photo_path)
+ values (1, 'BS Civil Engineering', 'Pending item', 'Listing from a pending user', 10, 'good', 'None', '00000000-0000-0000-0000-00000000000e/77777777-7777-7777-7777-777777777777.jpg');
 
 -- CHECK zero price rejected [error]
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
-insert into public.listings (category_id, program, title, description, price, condition, known_defects)
- values (1, 'BS Information Technology', 'Free item', 'Price of zero pesos', 0, 'good', 'None');
+insert into public.listings (category_id, program, title, description, price, condition, known_defects, photo_path)
+ values (1, 'BS Information Technology', 'Free item', 'Price of zero pesos', 0, 'good', 'None', '00000000-0000-0000-0000-00000000000c/77777777-7777-7777-7777-777777777777.jpg');
 
 -- CHECK known defects are required [error]
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+insert into public.listings (category_id, program, title, description, price, condition, known_defects, photo_path)
+ values (1, 'BS Information Technology', 'No disclosure', 'Defects left blank here', 50, 'good', ' ', '00000000-0000-0000-0000-00000000000c/77777777-7777-7777-7777-777777777777.jpg');
+
+-- CHECK a listing without a photo is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
 insert into public.listings (category_id, program, title, description, price, condition, known_defects)
- values (1, 'BS Information Technology', 'No disclosure', 'Defects left blank here', 50, 'good', ' ');
+ values (1, 'BS Information Technology', 'No photo', 'Listing sent without a photo', 50, 'good', 'None');
+
+-- CHECK an edit cannot remove the photo [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+update public.listings set photo_path = null where title = 'Drafting set';
 
 -- CHECK buyer cannot edit the seller's listing (0 rows changed)
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
@@ -306,6 +316,37 @@ set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000
 delete from storage.objects;
 reset role;
 select count(*) = 1 as pass from storage.objects;
+
+-- CHECK seller cannot delete the photo of own active listing (0 rows)
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+delete from storage.objects where name = '00000000-0000-0000-0000-00000000000c/11111111-1111-1111-1111-111111111111.jpg';
+reset role;
+select count(*) = 1 as pass from storage.objects
+ where name = '00000000-0000-0000-0000-00000000000c/11111111-1111-1111-1111-111111111111.jpg';
+
+-- CHECK seller cannot delete the photo of own sold listing (0 rows)
+reset role;
+insert into storage.objects (bucket_id, name) values ('listing-photos', '00000000-0000-0000-0000-00000000000c/55555555-5555-5555-5555-555555555555.jpg');
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+delete from storage.objects where name = '00000000-0000-0000-0000-00000000000c/55555555-5555-5555-5555-555555555555.jpg';
+reset role;
+select (select status from public.listings where id = 1) = 'sold'
+   and (select count(*) from storage.objects where name = '00000000-0000-0000-0000-00000000000c/55555555-5555-5555-5555-555555555555.jpg') = 1 as pass;
+
+-- CHECK seller cannot point a sold listing at a new photo (0 rows changed)
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+update public.listings set photo_path = '00000000-0000-0000-0000-00000000000c/66666666-6666-6666-6666-666666666666.jpg' where id = 1;
+reset role;
+select photo_path = '00000000-0000-0000-0000-00000000000c/55555555-5555-5555-5555-555555555555.jpg' as pass from public.listings where id = 1;
+
+-- CHECK seller can delete an own upload that no listing uses
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+insert into storage.objects (bucket_id, name) values
+ ('listing-photos', '00000000-0000-0000-0000-00000000000c/88888888-8888-8888-8888-888888888888.png');
+delete from storage.objects where name = '00000000-0000-0000-0000-00000000000c/88888888-8888-8888-8888-888888888888.png';
+reset role;
+select count(*) = 0 as pass from storage.objects
+ where name = '00000000-0000-0000-0000-00000000000c/88888888-8888-8888-8888-888888888888.png';
 
 -- CHECK approved buyer can no longer read the seller's profile row
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
