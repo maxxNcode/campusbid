@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { fetchListing, fetchMyListings } from './listings'
+import { fetchMyListings } from './listings'
 import type { Listing, MeetupPlace, PurchaseRequest } from '../types/database'
 
 // Messages written for people come from the database functions (error codes
@@ -105,9 +105,11 @@ export async function fetchMyRequests(userId: string): Promise<{ requests: Purch
     .order('id', { ascending: false })
   if (error) throw error
   const listings = new Map<number, Listing>()
-  for (const id of new Set(data.map((request) => request.listing_id))) {
-    const listing = await fetchListing(id)
-    if (listing) listings.set(id, listing)
+  const ids = [...new Set(data.map((request) => request.listing_id))]
+  if (ids.length > 0) {
+    const { data: rows, error: listingError } = await supabase.from('listings').select('*').in('id', ids)
+    if (listingError) throw listingError
+    for (const listing of rows) listings.set(listing.id, listing)
   }
   return { requests: data, listings }
 }

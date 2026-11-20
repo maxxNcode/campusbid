@@ -37,7 +37,7 @@ export function meetupProblem(localValue: string, now: Date = new Date()): strin
   }
   const minutes = Number(localValue.slice(11, 13)) * 60 + Number(localValue.slice(14, 16))
   if (minutes < MEETUP_FIRST_HOUR * 60 || minutes > MEETUP_LAST_HOUR * 60) {
-    return 'Choose a meetup time between 7:00 AM and 8:00 PM (Manila time).'
+    return 'Choose a start time between 7:00 AM and 8:00 PM, the latest start (Manila time).'
   }
   return null
 }

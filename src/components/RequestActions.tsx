@@ -22,6 +22,7 @@ export default function RequestActions({ request, role, itemTitle, onDone }: Pro
   const [reason, setReason] = useState('')
   const [reasonError, setReasonError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [openedAt] = useState(() => Date.now())
   const fieldId = `reason-${request.id}`
 
   async function run(action: () => Promise<unknown>, success: string) {
@@ -56,7 +57,10 @@ export default function RequestActions({ request, role, itemTitle, onDone }: Pro
   }
 
   function cancel() {
-    const problem = reasonProblem(reason)
+    // Only an accepted arrangement needs a reason; a pending request can be
+    // cancelled without one, but a reason that is typed must still be valid.
+    const needsReason = request.status === 'accepted'
+    const problem = needsReason || reason.trim() !== '' ? reasonProblem(reason) : null
     setReasonError(problem ?? '')
     if (problem) return
     const warning =
@@ -78,7 +82,12 @@ export default function RequestActions({ request, role, itemTitle, onDone }: Pro
   const sellerAccepted = role === 'seller' && request.status === 'accepted'
   if (!buyerCanCancel && !sellerPending && !sellerAccepted) return null
 
-  const reasonLabel = sellerPending ? 'Reason for declining (optional)' : 'Reason for cancelling'
+  const meetupPassed = sellerPending && new Date(request.meetup_at).getTime() <= openedAt
+  const reasonLabel = sellerPending
+    ? 'Reason for declining (optional)'
+    : request.status === 'pending'
+      ? 'Reason for cancelling (optional)'
+      : 'Reason for cancelling'
 
   return (
     <div className="border rounded p-3 mt-3">
@@ -95,10 +104,17 @@ export default function RequestActions({ request, role, itemTitle, onDone }: Pro
         />
         {reasonError && <div id={`${fieldId}-error`} className="invalid-feedback d-block">{reasonError}</div>}
       </div>
+      {meetupPassed && (
+        <p className="text-danger" role="note">
+          The meetup time for this request has passed, so it cannot be accepted. Decline it and ask the buyer for new times.
+        </p>
+      )}
       <div className="d-flex flex-wrap gap-2">
         {sellerPending && (
           <>
-            <button type="button" className="btn btn-primary" onClick={accept} disabled={busy}>Accept request</button>
+            {!meetupPassed && (
+              <button type="button" className="btn btn-primary" onClick={accept} disabled={busy}>Accept request</button>
+            )}
             <button type="button" className="btn btn-outline-secondary" onClick={decline} disabled={busy}>Decline request</button>
           </>
         )}

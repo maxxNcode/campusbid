@@ -89,7 +89,7 @@ export default function RequestForm({ listingId, priceText }: Props) {
           onChange={(event) => change('meetupAt', event.target.value)}
           aria-describedby="request-time-help request-time-error"
         />
-        <div id="request-time-help" className="form-text">Between 7:00 AM and 8:00 PM, within the next 30 days.</div>
+        <div id="request-time-help" className="form-text">Start between 7:00 AM and 8:00 PM (8:00 PM is the latest start), within the next 30 days.</div>
         {errors.meetupAt && <div id="request-time-error" className="invalid-feedback d-block">{errors.meetupAt}</div>}
       </div>
 
