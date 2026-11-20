@@ -563,3 +563,139 @@ reset role;
 select (select price from public.listings where title = 'Request target one') = 250
    and (select r.price_seen from public.purchase_requests r join public.listings l on l.id = r.listing_id
         where l.title = 'Request target one') = 300 as pass;
+
+-- Accept and decline. a = admin (an approved member who is not involved),
+-- b and d = buyers, c = seller, e = pending, requests on 'Request target one'.
+
+-- CHECK setup a second buyer's request on the same listing
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select r.status = 'pending' and r.price_seen = 250.00 as pass
+from public.send_purchase_request((select id from public.listings where title = 'Request target one'),
+                                  null, 'Library entrance, in the open area', public.test_at(3, '14:30')) r;
+
+-- CHECK a buyer cannot accept a request on someone else's listing [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.accept_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000d' limit 1));
+
+-- CHECK an unrelated approved member cannot accept [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select public.accept_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000d' limit 1));
+
+-- CHECK an unrelated approved member cannot decline [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select public.decline_purchase_request(1, null);
+
+-- CHECK an unrelated approved member sees no requests
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select count(*) = 0 as pass from public.purchase_requests;
+
+-- CHECK a pending applicant cannot accept [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
+select public.accept_purchase_request(1);
+
+-- CHECK anon cannot accept or decline [error]
+set role anon;
+select public.accept_purchase_request(1);
+
+-- CHECK anon cannot decline [error]
+set role anon;
+select public.decline_purchase_request(1, null);
+
+-- CHECK a request id that does not exist gives the same refusal [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.accept_purchase_request(999999);
+
+-- CHECK a refused accept changes nothing
+reset role;
+select (select count(*) from public.purchase_requests where status = 'pending' and listing_id =
+         (select id from public.listings where title = 'Request target one')) = 2
+   and (select status from public.listings where title = 'Request target one') = 'active' as pass;
+
+-- CHECK the seller accepts one request: it is accepted, the listing is reserved, the other request is declined
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select r.status = 'accepted' and r.accepted_at is not null as pass
+from public.accept_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one'))) r;
+
+-- CHECK the other pending request was declined with an item-unavailable reason
+reset role;
+select (r.status = 'declined' and r.closed_at is not null and r.closed_reason like 'The item is no longer available%') as pass
+from public.purchase_requests r where r.buyer_id = '00000000-0000-0000-0000-00000000000d'
+   and r.listing_id = (select id from public.listings where title = 'Request target one');
+
+-- CHECK the listing is reserved and has exactly one accepted request
+reset role;
+select (select status from public.listings where title = 'Request target one') = 'reserved'
+   and (select count(*) from public.purchase_requests where status = 'accepted'
+        and listing_id = (select id from public.listings where title = 'Request target one')) = 1 as pass;
+
+-- CHECK a replayed accept is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.accept_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')));
+
+-- CHECK accepting the declined request is refused and leaves everything as it was [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.accept_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000d'
+   and listing_id = (select id from public.listings where title = 'Request target one')));
+
+-- CHECK the state after those refusals is unchanged
+reset role;
+select (select status from public.listings where title = 'Request target one') = 'reserved'
+   and (select count(*) from public.purchase_requests where status = 'accepted'
+        and listing_id = (select id from public.listings where title = 'Request target one')) = 1
+   and (select count(*) from public.purchase_requests where status = 'declined'
+        and listing_id = (select id from public.listings where title = 'Request target one')) = 1 as pass;
+
+-- CHECK the database refuses a second accepted request on one listing even if a function is bypassed [error]
+reset role;
+update public.purchase_requests set status = 'accepted', accepted_at = now()
+ where buyer_id = '00000000-0000-0000-0000-00000000000d'
+   and listing_id = (select id from public.listings where title = 'Request target one');
+
+-- CHECK a new request on the reserved listing is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target one'),
+                                    null, 'Canteen seating area', public.test_at(3, '10:00'));
+
+-- CHECK setup two requests on 'Request target two'
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 1 as pass from (select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+   'Is it still available?', 'Canteen seating area', public.test_at(2, '09:00'))) x;
+
+-- CHECK second buyer on target two
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select count(*) = 1 as pass from (select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+   null, 'Canteen seating area', public.test_at(2, '11:00'))) x;
+
+-- CHECK the seller declines one request with a reason; the other stays pending and the listing stays available
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select (r.status = 'declined' and r.closed_reason = 'Already promised to someone else' and r.closed_at is not null) as pass
+from public.decline_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target two')), ' Already promised to someone else ') r;
+
+-- CHECK the other request is still pending and the listing is still available
+reset role;
+select (select count(*) from public.purchase_requests where status = 'pending'
+        and listing_id = (select id from public.listings where title = 'Request target two')) = 1
+   and (select status from public.listings where title = 'Request target two') = 'active' as pass;
+
+-- CHECK a replayed decline is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.decline_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target two')), null);
+
+-- CHECK a declined buyer cannot send again, and the message explains the limit [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+                                    null, 'Canteen seating area', public.test_at(4, '10:00'));
+
+-- CHECK the buyer sees the decline reason on their own request
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 1 and bool_and(closed_reason = 'Already promised to someone else') as pass
+from public.purchase_requests r where r.status = 'declined' and r.listing_id = (select id from public.listings where title = 'Request target two');
+
+-- CHECK a declined request cannot be accepted later [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.accept_purchase_request((select id from public.purchase_requests where status = 'declined'
+   and listing_id = (select id from public.listings where title = 'Request target two')));
