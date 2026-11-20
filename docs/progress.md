@@ -99,4 +99,5 @@ Decisions:
 - A withdrawn listing is not reopened; the seller lists the item again.
 - Each request stores the price the buyer saw.
 - Each transition is one database function that locks the listing row first, then the request, then re-checks approval, ownership and state.
+- Review fixes (same day): expired pending requests cannot be accepted, a pending cancel needs no reason, an accepted cancel on a non-reserved listing raises, and My Requests loads listings in one query (commits b2d79e2, 8ba4980).
 - Replays give a plain message instead of changing anything.

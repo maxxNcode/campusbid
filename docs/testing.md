@@ -106,7 +106,7 @@ New integration tests (not run, no project): a listing without a photo is refuse
 | Check | Command or method | Result |
 | --- | --- | --- |
 | TypeScript, lint, build | `npm run typecheck`, `npm run lint`, `npm run build` | Passed |
-| Offline SQL checks | `npm run test:offline` | 155 of 155 passed (75 new: sending, validation, one-request limit, accept, decline, cancel, complete, replays, unrelated users, anon) |
+| Offline SQL checks | `npm run test:offline` | 155 of 155 passed at the time (75 new: sending, validation, one-request limit, accept, decline, cancel, complete, replays, unrelated users, anon) |
 | Request screens | Playwright with stubbed Supabase, 1280 and 360 px | Form errors, send, accept, cancel with reason, stale accept message, complete; no horizontal scroll |
 | `npm test` | Vitest | 4 passed, 50 skipped: no `.env` or Supabase project |
 
@@ -121,3 +121,13 @@ Not run: `tests/requests.test.ts` (checks 4 to 10 and the meetup part of 11), th
 5. In the SQL editor, list the functions in `public` that visitors can call. The expected answer is no rows:
    `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');`
 6. Sign in as each demo account in two browser sessions and approve the pending applicant.
+
+### After the Day 3 review (2026-11-20)
+
+| Check | Result |
+| --- | --- |
+| TypeScript, lint, build | Passed |
+| `npm run test:offline` | 166 of 166 passed. The earlier "155" was right at the time (155 `-- CHECK` blocks); 11 were added for the review fixes. Skipping the new migration makes 6 of them fail, so they do test it |
+| `npm test` | 4 passed, 51 skipped (one new integration test); no `.env` |
+
+New offline checks: a meetup at exactly 20:00:00 is accepted and 20:00:01 refused, pending cancel with no reason works and a 1-character reason is still refused, an expired request cannot be accepted but can be declined, and cancelling an accepted request on a non-reserved listing raises and leaves the request accepted. The stubbed screen run was not repeated after these small UI changes. The parallel double-accept still has not run.
