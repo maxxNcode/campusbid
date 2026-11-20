@@ -201,6 +201,19 @@ describe.skipIf(!supabaseConfigured)('purchase requests and meetups', () => {
     expect(sellerView.data).toHaveLength(1)
   })
 
+  it('review fixes: a pending cancel needs no reason, and an expired pending request cannot be accepted', async () => {
+    const id = await newListing()
+    const req = (await send(buyer, id)).data!
+    await service.from('purchase_requests').update({ meetup_at: new Date(Date.now() - 3600 * 1000).toISOString() }).eq('id', req.id)
+    const accept = await seller.client.rpc('accept_purchase_request', { target_request_id: req.id })
+    expect(accept.error?.message).toMatch(/has already passed/i)
+    expect(await requestStatus(req.id)).toBe('pending')
+    expect(await listingStatus(id)).toBe('active')
+    const cancel = await buyer.client.rpc('cancel_purchase_request', { target_request_id: req.id, cancel_reason: '' })
+    expect(cancel.error).toBeNull()
+    expect(await requestStatus(req.id)).toBe('cancelled')
+  })
+
   it('check 11: refuses meetup times in the past, beyond 30 days, or outside 07:00 to 20:00 Manila', async () => {
     const id = await newListing()
     const cases = [meetupAt(-1), meetupAt(45), meetupAt(3, 5), meetupAt(3, 22)]

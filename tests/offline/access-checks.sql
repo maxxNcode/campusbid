@@ -845,3 +845,72 @@ select (select count(*) from public.purchase_requests r join public.listings l o
 select bool_and(not has_function_privilege('anon', p.oid, 'execute')) as pass
 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and p.proname in ('send_purchase_request','accept_purchase_request','decline_purchase_request','cancel_purchase_request','complete_purchase_request');
+
+-- Day 3 review fixes: meetup cutoff, past meetups, pending cancel without a reason.
+
+-- CHECK setup review-fix listings, each with a pending request from buyer b
+reset role;
+insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects, photo_path)
+ select '00000000-0000-0000-0000-00000000000c', 1, 'BS Information Technology', t.title, 'Review fix test listing', 300.00, 'good', 'None known',
+        '00000000-0000-0000-0000-00000000000c/' || t.photo || '.jpg'
+ from (values ('Review fix one', 'bbbbbbbb-0000-0000-0000-000000000001'),
+              ('Review fix two', 'bbbbbbbb-0000-0000-0000-000000000002'),
+              ('Review fix three', 'bbbbbbbb-0000-0000-0000-000000000003')) as t(title, photo);
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.send_purchase_request((select id from public.listings where title = 'Review fix one'), null, 'Canteen seating area', public.test_at(2, '10:00'));
+select public.send_purchase_request((select id from public.listings where title = 'Review fix two'), null, 'Canteen seating area', public.test_at(2, '10:00'));
+reset role;
+select count(*) = 2 as pass from public.purchase_requests r join public.listings l on l.id = r.listing_id where l.title like 'Review fix%';
+
+-- CHECK a meetup at exactly 20:00:00 Manila is accepted
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select r.meetup_at = public.test_at(2, '20:00:00') as pass from public.send_purchase_request((select id from public.listings where title = 'Review fix three'), null, 'Canteen seating area', public.test_at(2, '20:00:00')) r;
+
+-- CHECK a meetup one second after 20:00 Manila is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.send_purchase_request((select id from public.listings where title = 'Review fix three'), null, 'Canteen seating area', public.test_at(2, '20:00:01'));
+
+-- CHECK a buyer cancels a pending request with no reason
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select (r.status = 'cancelled' and r.closed_reason is null) as pass from public.cancel_purchase_request(
+  (select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+     and listing_id = (select id from public.listings where title = 'Review fix three')), '  ') r;
+
+-- CHECK a pending cancel with a too-short reason is still refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.cancel_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Review fix one')), 'x');
+
+-- CHECK the seller cannot accept a request whose meetup time has passed [error]
+reset role;
+update public.purchase_requests set meetup_at = now() - interval '1 hour'
+ where listing_id = (select id from public.listings where title = 'Review fix one');
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.accept_purchase_request((select id from public.purchase_requests
+   where listing_id = (select id from public.listings where title = 'Review fix one')));
+
+-- CHECK the expired request stayed pending and its listing available
+reset role;
+select (select status from public.purchase_requests where listing_id = (select id from public.listings where title = 'Review fix one')) = 'pending'
+   and (select status from public.listings where title = 'Review fix one') = 'active' as pass;
+
+-- CHECK the seller can still decline the expired request
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select r.status = 'declined' as pass from public.decline_purchase_request((select id from public.purchase_requests
+   where listing_id = (select id from public.listings where title = 'Review fix one')), 'Time passed') r;
+
+-- CHECK accept the second request, then break the listing state on purpose
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select (public.accept_purchase_request((select id from public.purchase_requests
+   where listing_id = (select id from public.listings where title = 'Review fix two')))).status = 'accepted' as pass;
+
+-- CHECK cancelling an accepted request whose listing is not reserved raises [error]
+reset role;
+update public.listings set status = 'active' where title = 'Review fix two';
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.cancel_purchase_request((select id from public.purchase_requests
+   where listing_id = (select id from public.listings where title = 'Review fix two')), 'Plans changed');
+
+-- CHECK that failed cancel left the request accepted
+reset role;
+select (select status from public.purchase_requests where listing_id = (select id from public.listings where title = 'Review fix two')) = 'accepted' as pass;
