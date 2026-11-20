@@ -699,3 +699,149 @@ from public.purchase_requests r where r.status = 'declined' and r.listing_id = (
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
 select public.accept_purchase_request((select id from public.purchase_requests where status = 'declined'
    and listing_id = (select id from public.listings where title = 'Request target two')));
+
+-- Cancel and complete. State now: target one is reserved (accepted: b; declined: d),
+-- target two is active (declined: b; pending: d).
+
+-- CHECK cancelling needs a reason [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.cancel_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')), '  ');
+
+-- CHECK an unrelated member cannot cancel an accepted request [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select public.cancel_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')), 'Not my business');
+
+-- CHECK the other buyer cannot cancel someone else's request [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.cancel_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')), 'Not my request');
+
+-- CHECK an unrelated member cannot complete [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select public.complete_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')));
+
+-- CHECK the buyer cannot complete the exchange [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.complete_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')));
+
+-- CHECK a pending request cannot be completed [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.complete_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000d'
+   and listing_id = (select id from public.listings where title = 'Request target two')));
+
+-- CHECK the seller cannot cancel a pending request, they decline it [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.cancel_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000d'
+   and listing_id = (select id from public.listings where title = 'Request target two')), 'Changed my mind');
+
+-- CHECK a failed cancel leaves the listing and request unchanged
+reset role;
+select (select status from public.listings where title = 'Request target one') = 'reserved'
+   and (select status from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+        and listing_id = (select id from public.listings where title = 'Request target one')) = 'accepted' as pass;
+
+-- CHECK the seller cancels the accepted arrangement; the request is cancelled with the reason and the listing is available again
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select (r.status = 'cancelled' and r.closed_reason = 'Buyer did not answer messages' and r.closed_at is not null) as pass
+from public.cancel_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')), ' Buyer did not answer messages ') r;
+
+-- CHECK the listing is available again and the declined request stayed declined
+reset role;
+select (select status from public.listings where title = 'Request target one') = 'active'
+   and (select status from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000d'
+        and listing_id = (select id from public.listings where title = 'Request target one')) = 'declined' as pass;
+
+-- CHECK a replayed cancel is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.cancel_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')), 'Again');
+
+-- CHECK the cancelled buyer cannot send a second request for the reopened listing [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target one'),
+                                    null, 'Canteen seating area', public.test_at(3, '10:00'));
+
+-- CHECK a cancelled request cannot be completed [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.complete_purchase_request((select id from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+   and listing_id = (select id from public.listings where title = 'Request target one')));
+
+-- CHECK the reopened listing can take another request, and the seller can accept it
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select count(*) = 1 as pass from (select public.send_purchase_request((select id from public.listings where title = 'Request target one'),
+   'Second chance', 'Canteen seating area', public.test_at(5, '15:00'))) x;
+
+-- CHECK the seller accepts it and the listing is reserved again
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select r.status = 'accepted' as pass from public.accept_purchase_request((select id from public.purchase_requests
+   where buyer_id = '00000000-0000-0000-0000-00000000000a' and listing_id = (select id from public.listings where title = 'Request target one'))) r;
+
+-- CHECK the buyer cancels an accepted request, and the listing reopens
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000a',false);
+select r.status = 'cancelled' as pass from public.cancel_purchase_request((select id from public.purchase_requests
+   where buyer_id = '00000000-0000-0000-0000-00000000000a' and listing_id = (select id from public.listings where title = 'Request target one')), 'Schedule clash') r;
+
+-- CHECK the listing reopened after the buyer cancelled
+reset role;
+select (select status from public.listings where title = 'Request target one') = 'active' as pass;
+
+-- CHECK a buyer cancels their own pending request with a reason
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select (r.status = 'cancelled' and r.closed_reason = 'Found one elsewhere') as pass from public.cancel_purchase_request((select id from public.purchase_requests
+   where buyer_id = '00000000-0000-0000-0000-00000000000d' and listing_id = (select id from public.listings where title = 'Request target two')), 'Found one elsewhere') r;
+
+-- CHECK a cancelled pending request leaves the listing available
+reset role;
+select (select status from public.listings where title = 'Request target two') = 'active' as pass;
+
+-- CHECK setup a request on target three and accept it
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select count(*) = 1 as pass from (select public.send_purchase_request((select id from public.listings where title = 'Request target three'),
+   null, 'Engineering building lobby', public.test_at(2, '16:00'))) x;
+
+-- CHECK a second buyer on target three
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select count(*) = 1 as pass from (select public.send_purchase_request((select id from public.listings where title = 'Request target three'),
+   null, 'Engineering building lobby', public.test_at(2, '17:00'))) x;
+
+-- CHECK accept the first buyer on target three
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select r.status = 'accepted' as pass from public.accept_purchase_request((select id from public.purchase_requests
+   where buyer_id = '00000000-0000-0000-0000-00000000000b' and listing_id = (select id from public.listings where title = 'Request target three'))) r;
+
+-- CHECK the seller completes the exchange: that request is completed and the item is sold
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select (r.status = 'completed' and r.completed_at is not null) as pass from public.complete_purchase_request((select id from public.purchase_requests
+   where buyer_id = '00000000-0000-0000-0000-00000000000b' and listing_id = (select id from public.listings where title = 'Request target three'))) r;
+
+-- CHECK only the accepted request is completed, the other stays declined, and the listing is sold
+reset role;
+select (select status from public.listings where title = 'Request target three') = 'sold'
+   and (select status from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000b'
+        and listing_id = (select id from public.listings where title = 'Request target three')) = 'completed'
+   and (select status from public.purchase_requests where buyer_id = '00000000-0000-0000-0000-00000000000d'
+        and listing_id = (select id from public.listings where title = 'Request target three')) = 'declined' as pass;
+
+-- CHECK a replayed complete is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.complete_purchase_request((select id from public.purchase_requests
+   where buyer_id = '00000000-0000-0000-0000-00000000000b' and listing_id = (select id from public.listings where title = 'Request target three')));
+
+-- CHECK a completed request cannot be cancelled by the buyer [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.cancel_purchase_request((select id from public.purchase_requests
+   where buyer_id = '00000000-0000-0000-0000-00000000000b' and listing_id = (select id from public.listings where title = 'Request target three')), 'Too late');
+
+-- CHECK a sold listing's history stays with the seller and the buyer
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select (select count(*) from public.purchase_requests r join public.listings l on l.id = r.listing_id where l.title = 'Request target three') = 2 as pass;
+
+-- CHECK the request functions are not callable by anon
+select bool_and(not has_function_privilege('anon', p.oid, 'execute')) as pass
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname in ('send_purchase_request','accept_purchase_request','decline_purchase_request','cancel_purchase_request','complete_purchase_request');
