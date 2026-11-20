@@ -10,6 +10,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import PendingApprovalPage from './pages/PendingApprovalPage'
 import RegisterPage from './pages/RegisterPage'
 import RequestDetailPage from './pages/RequestDetailPage'
+import RequestListPage from './pages/RequestListPage'
 import SignInPage from './pages/SignInPage'
 
 export default function App() {
@@ -29,6 +30,8 @@ export default function App() {
             <Route path="/listings/:id" element={<ListingDetailsPage />} />
             <Route path="/listings/:id/edit" element={<ListingFormPage />} />
             <Route path="/my-listings" element={<MyListingsPage />} />
+            <Route path="/my-requests" element={<RequestListPage role="buyer" />} />
+            <Route path="/requests-received" element={<RequestListPage role="seller" />} />
             <Route path="/requests/:id" element={<RequestDetailPage />} />
             <Route element={<RequireAdmin />}>
               <Route path="/admin/approvals" element={<AdminApprovalsPage />} />

@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth-context'
 import { formatManilaDateTime } from '../lib/format'
 import { LISTING_STATUS_LABELS, formatPeso } from '../lib/listing-rules'
 import { fetchListing, fetchMemberNames } from '../lib/listings'
+import RequestActions from '../components/RequestActions'
 import { fetchRequest } from '../lib/requests'
 import { REQUEST_STATUS_LABELS } from '../lib/request-rules'
 import type { Listing, PurchaseRequest } from '../types/database'
@@ -18,6 +19,8 @@ export default function RequestDetailPage() {
   const location = useLocation()
   const sent = (location.state as { sent?: boolean } | null)?.sent
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
+  const [outcome, setOutcome] = useState<{ ok: boolean; message: string } | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -50,7 +53,7 @@ export default function RequestDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [requestId])
+  }, [requestId, reloadKey])
 
   if (state.kind === 'loading') return <p>Loading…</p>
   if (state.kind === 'error') return <p role="alert">Could not load this request. Check your connection and reload.</p>
@@ -74,6 +77,11 @@ export default function RequestDetailPage() {
       {sent && (
         <p className="alert alert-success" role="status">
           Your request is sent. The seller can accept or decline it.
+        </p>
+      )}
+      {outcome && (
+        <p className={`alert ${outcome.ok ? 'alert-success' : 'alert-danger'}`} role={outcome.ok ? 'status' : 'alert'}>
+          {outcome.message}
         </p>
       )}
       <p>
@@ -139,7 +147,16 @@ export default function RequestDetailPage() {
           </>
         )}
       </dl>
-      <p className="text-body-secondary">
+      <RequestActions
+        request={request}
+        role={isBuyer ? 'buyer' : 'seller'}
+        itemTitle={listing ? listing.title : 'this item'}
+        onDone={(result) => {
+          setOutcome(result)
+          setReloadKey((key) => key + 1)
+        }}
+      />
+      <p className="text-body-secondary mt-3">
         Payment and handover happen in person, outside CampusBid. Inspect the item before you pay.
       </p>
     </article>

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
-import type { MeetupPlace, PurchaseRequest } from '../types/database'
+import { fetchListing, fetchMyListings } from './listings'
+import type { Listing, MeetupPlace, PurchaseRequest } from '../types/database'
 
 // Messages written for people come from the database functions (error codes
 // P0001, P0002 and 42501). Anything else gets a general message.
@@ -50,4 +51,63 @@ export async function sendPurchaseRequest(
   })
   if (error) throw error
   return data
+}
+
+export async function acceptPurchaseRequest(id: number): Promise<PurchaseRequest> {
+  const { data, error } = await supabase.rpc('accept_purchase_request', { target_request_id: id })
+  if (error) throw error
+  return data
+}
+
+export async function declinePurchaseRequest(id: number, reason: string): Promise<PurchaseRequest> {
+  const { data, error } = await supabase.rpc('decline_purchase_request', {
+    target_request_id: id,
+    decline_reason: reason.trim() === '' ? null : reason,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function cancelPurchaseRequest(id: number, reason: string): Promise<PurchaseRequest> {
+  const { data, error } = await supabase.rpc('cancel_purchase_request', { target_request_id: id, cancel_reason: reason })
+  if (error) throw error
+  return data
+}
+
+export async function completePurchaseRequest(id: number): Promise<PurchaseRequest> {
+  const { data, error } = await supabase.rpc('complete_purchase_request', { target_request_id: id })
+  if (error) throw error
+  return data
+}
+
+// Requests on the signed-in member's own listings, newest first.
+export async function fetchRequestsReceived(userId: string): Promise<{ requests: PurchaseRequest[]; listings: Map<number, Listing> }> {
+  const mine = await fetchMyListings(userId)
+  const listings = new Map(mine.map((listing) => [listing.id, listing]))
+  if (mine.length === 0) return { requests: [], listings }
+  const { data, error } = await supabase
+    .from('purchase_requests')
+    .select('*')
+    .in('listing_id', [...listings.keys()])
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+  if (error) throw error
+  return { requests: data, listings }
+}
+
+// Requests the signed-in member sent as a buyer, newest first.
+export async function fetchMyRequests(userId: string): Promise<{ requests: PurchaseRequest[]; listings: Map<number, Listing> }> {
+  const { data, error } = await supabase
+    .from('purchase_requests')
+    .select('*')
+    .eq('buyer_id', userId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+  if (error) throw error
+  const listings = new Map<number, Listing>()
+  for (const id of new Set(data.map((request) => request.listing_id))) {
+    const listing = await fetchListing(id)
+    if (listing) listings.set(id, listing)
+  }
+  return { requests: data, listings }
 }
