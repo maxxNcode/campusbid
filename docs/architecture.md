@@ -29,6 +29,7 @@ auth.users 1──1 profiles
 profiles   1──* listings           (listings.seller_id)
 categories 1──* listings
 listings   1──* purchase_requests  (one per buyer per listing)
+meetup_places                       (small configurable list of campus descriptions)
 profiles   1──* purchase_requests  (purchase_requests.buyer_id)
 profiles   1──* profiles           (profiles.reviewed_by, the admin who reviewed)
 ```
@@ -36,7 +37,7 @@ profiles   1──* profiles           (profiles.reviewed_by, the admin who revi
 - `profiles`: full_name, program, year_level, is_admin, approval_status (pending/approved/rejected), reviewed_by, reviewed_at. Email and password stay in Supabase's `auth.users`.
 - `categories`: name, unique slug.
 - `listings`: seller, category, program, title, description, price `numeric(10,2)` (above zero), condition, model_or_edition, included_parts, known_defects (required), photo_path, status (active/reserved/sold/withdrawn).
-- `purchase_requests`: listing, buyer, note, status (pending/accepted/declined/cancelled/completed), meetup_place, meetup_at, accepted_at, completed_at, closed_at, closed_reason. The seller is not stored here; it is the listing's seller.
+- `purchase_requests`: listing, buyer, note, status (pending/accepted/declined/cancelled/completed), meetup_place, meetup_at, price_seen (the price the buyer saw), accepted_at, completed_at, closed_at, closed_reason. The seller is not stored here; it is the listing's seller.
 
 Times are stored as `timestamptz` and shown in Asia/Manila time (`src/lib/format.ts`).
 
@@ -54,3 +55,13 @@ tests/                Vitest integration tests against the real project
 tests/offline/        SQL checks of the migrations on in-memory Postgres
 docs/
 ```
+
+## Purchase requests and locking
+
+Clients can only read `purchase_requests`. Every change goes through a security definer function with `set search_path = ''` and an explicit `grant execute` to `authenticated`: `send_purchase_request`, `accept_purchase_request`, `decline_purchase_request`, `cancel_purchase_request` and `complete_purchase_request`. A request is visible only to its buyer and the listing's seller.
+
+Every transition uses one lock order: read the request's listing id without a lock, lock the listing row (`SELECT ... FOR UPDATE`), lock the request row, then re-check approval, ownership and the current state. Because all transitions on one listing queue on the same listing row, two accepts cannot both win. A partial unique index (at most one accepted or completed request per listing) backs this up in the table itself. A stale or replayed click gets a message such as "This request is no longer pending. It is now cancelled."; nothing is duplicated or changed.
+
+States: pending to accepted or declined; accepted to cancelled or completed; pending to cancelled (buyer). Accepting reserves the listing and auto-declines the other pending requests with an item-unavailable reason. Cancelling an accepted request reopens the listing; declined requests stay declined. Completing sets the request completed and the listing sold.
+
+Meetups: the place must match an active row in `meetup_places` (descriptions only; none is called official or safe). The time is checked on the server in Asia/Manila: in the future, within 30 days, between 07:00 and 20:00.

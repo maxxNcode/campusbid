@@ -83,3 +83,20 @@ Decisions:
 - Request buttons are not shown. The item page says requests arrive in the next phase.
 
 The offline checks found a mistake in their own setup: a Day 1 check that is expected to fail had rolled back the creation of a second pending applicant, so the first Phase 2 checks for that applicant passed without the user existing. The setup now creates the applicant in its own block (commit 9ffbfab). The Day 1 check "buyer cannot insert listing" became "pending user cannot insert listing", because approved members may now create listings.
+
+## 2026-11-20, Day 3: Phase 3 (purchase requests and meetups)
+
+| Commit | Change |
+| --- | --- |
+| 8db4f43 | Request sending, meetup places and price seen |
+| 9992c4f | Accept and decline functions |
+| 9474536 | Cancel and complete functions |
+| 471a880 | Request pages with confirmed actions |
+| c758d0b | Integration tests for requests |
+
+Decisions:
+
+- A withdrawn listing is not reopened; the seller lists the item again.
+- Each request stores the price the buyer saw.
+- Each transition is one database function that locks the listing row first, then the request, then re-checks approval, ownership and state.
+- Replays give a plain message instead of changing anything.

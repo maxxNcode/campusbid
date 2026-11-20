@@ -13,8 +13,10 @@ No feature is marked Done yet, because nothing has run against a Supabase projec
 | Create, view, edit listings with photo and condition disclosure | Partly done | `ListingFormPage`, `ListingDetailsPage`, listing and storage policies | Photo bucket limits are enforced by Storage, so only checked once the project exists |
 | My Listings and withdraw | Partly done | `MyListingsPage`, `withdraw_listing()` | |
 | Seeded demo listings (10, with placeholder photos) | Partly done | `scripts/demo-listings.ts`, `scripts/seed-photos/` | Not yet run |
-| Purchase requests: accept, decline, cancel, complete | Not started | Table exists | Phase 3 |
-| Incoming and outgoing request views | Not started | | Phase 3 |
+| Purchase requests: send, accept, decline, cancel, complete | Partly done | Migrations `20261120*`, `RequestForm`, `RequestActions`, 155 offline SQL checks, stubbed screen run | Integration tests in `tests/requests.test.ts` written, not yet run. A withdrawn listing is not reopened (see below) |
+| Incoming and outgoing request views | Partly done | My Requests, Requests Received, request detail | Same caveat |
 | Admin approval page | Partly done | `src/pages/AdminApprovalsPage.tsx` | Same caveat as the approval flow |
 
 Outside this release (unchanged): auctions, payments and fees, chat and notifications, ratings, multiple campuses, native apps, AI recommendations, maps.
+
+Decision (Day 3, student choice): a withdrawn listing cannot be reopened. The seller lists the item again. Each request also records the price the buyer saw when sending it (`price_seen`), and the request pages show it.

@@ -6,7 +6,7 @@ Team: Mark Froilan Lendio (leader), John Nicholas De La Calzada, Rene James Aleo
 
 ## Current status
 
-Phases 1 and 2 of the build (accounts and approval, then listings) are implemented. Purchase requests are not built yet. The screens are temporary functional pages with plain Bootstrap styling; the team will supply the visual design. See `docs/progress.md` for the dated log and `docs/scope.md` for feature status.
+Phases 1 to 3 of the build (accounts and approval, listings, then purchase requests with meetups) are implemented. The screens are temporary functional pages with plain Bootstrap styling; the team will supply the visual design. See `docs/progress.md` for the dated log and `docs/scope.md` for feature status.
 
 What works now:
 
@@ -16,7 +16,7 @@ What works now:
 - Database tables, Row Level Security and the admin review function (`supabase/migrations/`).
 - Approved members can list an item with a photo, price in pesos, condition, known defects, model or edition and included or missing parts, and edit it while it is available.
 - Browse: keyword search, category and program filters, newest first, 12 per page, with empty states. Only available items show unless "Also show reserved items" is ticked.
-- Item details page with the seller's name. Purchase requests arrive in the next phase, and the page says so.
+- Item details page with the seller's name. Buyers send one purchase request per item with a note, a campus meetup place and a time.
 - My Listings with Available, Reserved, Sold and Withdrawn filters, and a Withdraw that asks for confirmation and keeps request history.
 - Photos are stored in a private bucket that only approved members can read; uploads get generated names and must be JPEG, PNG or WebP up to 5 MB.
 - A seed script for categories, fictional demo accounts and ten demo listings.
@@ -106,11 +106,11 @@ npm run test:offline  # SQL access checks on a local in-memory Postgres (no proj
 
 ## Main flow
 
-Planned demo flow: a seller lists an item with a photo and details, a buyer finds it and sends a purchase request with a proposed campus meetup, the seller accepts (the listing becomes reserved), and after the handover the seller marks it completed (the listing becomes sold). Accounts, approval and the listing side (sell, browse, view, edit, withdraw) exist so far; requests come next.
+Planned demo flow: a seller lists an item with a photo and details, a buyer finds it and sends a purchase request with a proposed campus meetup, the seller accepts (the listing becomes reserved), and after the handover the seller marks it completed (the listing becomes sold). Accounts, approval, listings and the full request flow exist. In the two-browser demo, buyer@example.test sends a request, seller@example.test accepts it under Requests Received, and marks the handover done.
 
 ## Known limitations
 
-See `docs/known-issues.md`. In short: purchase requests are not built yet, and the integration tests and seed have not yet been run against a Supabase project.
+See `docs/known-issues.md`. In short: the integration tests and seed have not yet been run against a Supabase project.
 
 ## Credits
 

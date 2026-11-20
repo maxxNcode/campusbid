@@ -101,6 +101,17 @@ Mutation runs: with `SKIP_MIGRATION=revoke_default_function` five checks fail (b
 
 New integration tests (not run, no project): a listing without a photo is refused, and the seller cannot delete or remove the photo of their withdrawn listing. Every listing insert in the suites now sends a photo path.
 
+## Checks run on 2026-11-20 (Day 3)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| TypeScript, lint, build | `npm run typecheck`, `npm run lint`, `npm run build` | Passed |
+| Offline SQL checks | `npm run test:offline` | 155 of 155 passed (75 new: sending, validation, one-request limit, accept, decline, cancel, complete, replays, unrelated users, anon) |
+| Request screens | Playwright with stubbed Supabase, 1280 and 360 px | Form errors, send, accept, cancel with reason, stale accept message, complete; no horizontal scroll |
+| `npm test` | Vitest | 4 passed, 50 skipped: no `.env` or Supabase project |
+
+Not run: `tests/requests.test.ts` (checks 4 to 10 and the meetup part of 11), the seed, and the real two-connection double-accept. The offline database (PGlite) is one connection, so a parallel race cannot run there; replays and stale clicks are tested one after another instead.
+
 ## Setup checklist once the project exists
 
 1. Apply all migrations in `supabase/migrations/` in filename order. They also create the private `listing-photos` bucket.
