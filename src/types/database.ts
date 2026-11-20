@@ -143,6 +143,12 @@ export type Database = {
           },
         ]
       }
+      meetup_places: {
+        Row: { id: number; name: string; is_active: boolean; sort_order: number }
+        Insert: { id?: never; name: string; is_active?: boolean; sort_order?: number }
+        Update: { id?: never; name?: string; is_active?: boolean; sort_order?: number }
+        Relationships: []
+      }
       purchase_requests: {
         Row: {
           id: number
@@ -152,6 +158,7 @@ export type Database = {
           status: Database['public']['Enums']['request_status']
           meetup_place: string
           meetup_at: string
+          price_seen: number
           accepted_at: string | null
           completed_at: string | null
           closed_at: string | null
@@ -167,6 +174,7 @@ export type Database = {
           status?: Database['public']['Enums']['request_status']
           meetup_place: string
           meetup_at: string
+          price_seen: number
           accepted_at?: string | null
           completed_at?: string | null
           closed_at?: string | null
@@ -182,6 +190,7 @@ export type Database = {
           status?: Database['public']['Enums']['request_status']
           meetup_place?: string
           meetup_at?: string
+          price_seen?: number
           accepted_at?: string | null
           completed_at?: string | null
           closed_at?: string | null
@@ -249,6 +258,26 @@ export type Database = {
           created_at: string
         }[]
       }
+      send_purchase_request: {
+        Args: { target_listing_id: number; request_note: string | null; place: string; meetup_time: string }
+        Returns: Database['public']['Tables']['purchase_requests']['Row']
+      }
+      accept_purchase_request: {
+        Args: { target_request_id: number }
+        Returns: Database['public']['Tables']['purchase_requests']['Row']
+      }
+      decline_purchase_request: {
+        Args: { target_request_id: number; decline_reason: string | null }
+        Returns: Database['public']['Tables']['purchase_requests']['Row']
+      }
+      cancel_purchase_request: {
+        Args: { target_request_id: number; cancel_reason: string }
+        Returns: Database['public']['Tables']['purchase_requests']['Row']
+      }
+      complete_purchase_request: {
+        Args: { target_request_id: number }
+        Returns: Database['public']['Tables']['purchase_requests']['Row']
+      }
       withdraw_listing: {
         Args: { target_listing_id: number }
         Returns: Database['public']['Tables']['listings']['Row']
@@ -278,6 +307,8 @@ type PublicSchema = Database['public']
 export type Profile = PublicSchema['Tables']['profiles']['Row']
 export type Category = PublicSchema['Tables']['categories']['Row']
 export type Listing = PublicSchema['Tables']['listings']['Row']
+export type MeetupPlace = PublicSchema['Tables']['meetup_places']['Row']
+export type RequestStatus = PublicSchema['Enums']['request_status']
 export type PurchaseRequest = PublicSchema['Tables']['purchase_requests']['Row']
 export type ApprovalStatus = PublicSchema['Enums']['approval_status']
 export type PendingAccount = PublicSchema['Functions']['pending_accounts']['Returns'][number]

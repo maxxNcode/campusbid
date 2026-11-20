@@ -104,8 +104,8 @@ update public.profiles set approval_status='approved' where id='00000000-0000-00
 -- CHECK buyer still sees a sold listing they requested; others do not
 reset role;
 set role service_role;
-insert into public.purchase_requests (listing_id, buyer_id, meetup_place, meetup_at, status, accepted_at, completed_at)
- values (1, '00000000-0000-0000-0000-00000000000b', 'Library lobby', now() + interval '1 day', 'completed', now(), now());
+insert into public.purchase_requests (listing_id, buyer_id, meetup_place, meetup_at, price_seen, status, accepted_at, completed_at)
+ values (1, '00000000-0000-0000-0000-00000000000b', 'Library lobby', now() + interval '1 day', 650, 'completed', now(), now());
 update public.listings set status = 'sold' where id = 1;
 reset role;
 set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
@@ -385,8 +385,8 @@ select * from public.member_names(array['00000000-0000-0000-0000-00000000000c']:
 
 -- CHECK setup a pending request on the seller's drafting set
 reset role; set role service_role;
-insert into public.purchase_requests (listing_id, buyer_id, meetup_place, meetup_at)
- select id, '00000000-0000-0000-0000-00000000000b', 'Library lobby', now() + interval '2 days'
+insert into public.purchase_requests (listing_id, buyer_id, meetup_place, meetup_at, price_seen)
+ select id, '00000000-0000-0000-0000-00000000000b', 'Library lobby', now() + interval '2 days', 450.50
  from public.listings where title = 'Drafting set';
 reset role;
 select count(*) = 1 as pass from public.purchase_requests where status = 'pending';
@@ -436,3 +436,130 @@ set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000
 update public.listings set price = 1 where title = 'Drafting set';
 reset role;
 select price = 400.00 as pass from public.listings where title = 'Drafting set';
+
+-- Phase 3: purchase requests. b = approved buyer, c = approved seller (owner of
+-- the listings below), d = a second approved buyer (approved earlier), e = pending.
+-- test_at(days, 'HH:MM') is a Manila-time helper for building meetup times.
+
+-- CHECK setup request targets and a Manila time helper
+reset role;
+create function public.test_at(days int, hhmm time) returns timestamptz language sql as $$
+  select ((date_trunc('day', now() at time zone 'Asia/Manila') + make_interval(days => days) + hhmm) at time zone 'Asia/Manila')
+$$;
+grant execute on function public.test_at(int, time) to authenticated;
+insert into public.listings (seller_id, category_id, program, title, description, price, condition, known_defects, photo_path)
+ select '00000000-0000-0000-0000-00000000000c', 1, 'BS Information Technology', t.title, 'Request test listing item', 300.00, 'good', 'None known',
+        '00000000-0000-0000-0000-00000000000c/' || t.photo || '.jpg'
+ from (values ('Request target one', 'aaaaaaaa-0000-0000-0000-000000000001'),
+              ('Request target two', 'aaaaaaaa-0000-0000-0000-000000000002'),
+              ('Request target three', 'aaaaaaaa-0000-0000-0000-000000000003')) as t(title, photo);
+select count(*) = 3 as pass from public.listings where title like 'Request target%';
+
+-- CHECK buyers can read the meetup places, anon and pending users cannot
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select (select count(*) from public.meetup_places) = 5
+   and (select count(*) from public.meetup_places where name ~* 'official|safe') = 0 as pass;
+
+-- CHECK pending applicant sees no meetup places
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
+select count(*) = 0 as pass from public.meetup_places;
+
+-- CHECK buyer cannot insert a request directly [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+insert into public.purchase_requests (listing_id, meetup_place, meetup_at, price_seen)
+ select id, 'Canteen seating area', public.test_at(2, '10:00'), 1 from public.listings where title = 'Request target one';
+
+-- CHECK buyer sends a request and the price seen is recorded
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select (r.buyer_id = '00000000-0000-0000-0000-00000000000b' and r.status = 'pending' and r.price_seen = 300.00
+        and r.note = 'Can meet after class') as pass
+from public.send_purchase_request((select id from public.listings where title = 'Request target one'),
+                                  '  Can meet after class ', 'Canteen seating area', public.test_at(2, '10:00')) r;
+
+-- CHECK a second request for the same listing by the same buyer is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target one'),
+                                    null, 'Canteen seating area', public.test_at(3, '10:00'));
+
+-- CHECK the one-request refusal explains the limit
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000b',false);
+do $$ begin
+  perform public.send_purchase_request((select id from public.listings where title = 'Request target one'),
+                                       null, 'Canteen seating area', public.test_at(3, '10:00'));
+  raise exception 'no error';
+exception when others then
+  if sqlerrm not like 'You already sent a request%' then raise; end if;
+end $$;
+select true as pass;
+
+-- CHECK the seller cannot request their own item [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+                                    null, 'Canteen seating area', public.test_at(2, '10:00'));
+
+-- CHECK a pending applicant cannot send a request [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000e',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+                                    null, 'Canteen seating area', public.test_at(2, '10:00'));
+
+-- CHECK anon cannot call send_purchase_request [error]
+set role anon;
+select public.send_purchase_request(1, null, 'Canteen seating area', public.test_at(2, '10:00'));
+
+-- CHECK a sold listing cannot receive a request [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.send_purchase_request(1, null, 'Canteen seating area', public.test_at(2, '10:00'));
+
+-- CHECK a withdrawn listing cannot receive a request [error]
+reset role;
+select set_config('test.withdrawn_id', (select id::text from public.listings where title = 'Drafting set'), false);
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.send_purchase_request(current_setting('test.withdrawn_id')::bigint,
+                                    null, 'Canteen seating area', public.test_at(2, '10:00'));
+
+-- CHECK a meetup time in the past is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+                                    null, 'Canteen seating area', public.test_at(-1, '10:00'));
+
+-- CHECK a meetup more than 30 days away is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+                                    null, 'Canteen seating area', public.test_at(45, '10:00'));
+
+-- CHECK a meetup at 22:00 Manila time is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+                                    null, 'Canteen seating area', public.test_at(2, '22:00'));
+
+-- CHECK a meetup place outside the list is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+                                    null, 'Behind the bike shed', public.test_at(2, '10:00'));
+
+-- CHECK a note over 500 characters is refused [error]
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select public.send_purchase_request((select id from public.listings where title = 'Request target two'),
+                                    repeat('x', 501), 'Canteen seating area', public.test_at(2, '10:00'));
+
+-- CHECK a refused request leaves no row behind
+reset role;
+select count(*) = 0 as pass from public.purchase_requests r join public.listings l on l.id = r.listing_id
+ where l.title = 'Request target two';
+
+-- CHECK the other buyer cannot see the first buyer's request
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',false);
+select count(*) = 0 as pass from public.purchase_requests;
+
+-- CHECK the seller sees the request on their listing, with the price the buyer saw
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+select count(*) = 1 and bool_and(price_seen = 300.00) as pass from public.purchase_requests r
+ join public.listings l on l.id = r.listing_id where l.title = 'Request target one';
+
+-- CHECK the price seen stays when the seller later edits the price
+set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000c',false);
+update public.listings set price = 250 where title = 'Request target one';
+reset role;
+select (select price from public.listings where title = 'Request target one') = 250
+   and (select r.price_seen from public.purchase_requests r join public.listings l on l.id = r.listing_id
+        where l.title = 'Request target one') = 300 as pass;

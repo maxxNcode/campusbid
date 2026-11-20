@@ -158,6 +158,7 @@ describe.skipIf(!supabaseConfigured)('listings, photos and search', () => {
         listing_id: listingId,
         buyer_id: buyer.userId,
         meetup_place: 'Main library lobby',
+        price_seen: 500,
         meetup_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
       })
       expect(requestError).toBeNull()

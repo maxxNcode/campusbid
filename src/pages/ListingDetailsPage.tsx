@@ -4,14 +4,18 @@ import { useAuth } from '../lib/auth-context'
 import { formatManilaDateTime } from '../lib/format'
 import { CONDITION_LABELS, LISTING_STATUS_LABELS, formatPeso } from '../lib/listing-rules'
 import { fetchCategories, fetchListing, fetchMemberNames, signedPhotoUrls } from '../lib/listings'
+import { fetchMyRequestForListing } from '../lib/requests'
+import { REQUEST_STATUS_LABELS } from '../lib/request-rules'
 import ListingPhoto from '../components/ListingPhoto'
-import type { Listing } from '../types/database'
+import RequestForm from '../components/RequestForm'
+import type { Listing, PurchaseRequest } from '../types/database'
 
 type Details = {
   listing: Listing
   categoryName: string
   sellerName: string
   photoUrl?: string
+  myRequest: PurchaseRequest | null
 }
 
 type LoadState = { kind: 'loading' } | { kind: 'missing' } | { kind: 'error' } | { kind: 'ready'; details: Details }
@@ -33,10 +37,12 @@ export default function ListingDetailsPage() {
           if (!cancelled) setState({ kind: 'missing' })
           return
         }
-        const [categories, names, urls] = await Promise.all([
+        const userId = session?.user.id
+        const [categories, names, urls, myRequest] = await Promise.all([
           fetchCategories(),
           fetchMemberNames([listing.seller_id]),
           signedPhotoUrls(listing.photo_path ? [listing.photo_path] : []),
+          userId && listing.seller_id !== userId ? fetchMyRequestForListing(listing.id, userId) : Promise.resolve(null),
         ])
         if (cancelled) return
         setState({
@@ -46,6 +52,7 @@ export default function ListingDetailsPage() {
             categoryName: categories.find((category) => category.id === listing.category_id)?.name ?? 'Uncategorised',
             sellerName: names.get(listing.seller_id) ?? 'A CampusBid member',
             photoUrl: listing.photo_path ? urls.get(listing.photo_path) : undefined,
+            myRequest,
           },
         })
       } catch {
@@ -56,7 +63,7 @@ export default function ListingDetailsPage() {
     return () => {
       cancelled = true
     }
-  }, [listingId])
+  }, [listingId, session?.user.id])
 
   if (state.kind === 'loading') return <p>Loading…</p>
   if (state.kind === 'error') return <p role="alert">Could not load this listing. Check your connection and reload.</p>
@@ -70,7 +77,7 @@ export default function ListingDetailsPage() {
     )
   }
 
-  const { listing, categoryName, sellerName, photoUrl } = state.details
+  const { listing, categoryName, sellerName, photoUrl, myRequest } = state.details
   const isOwner = listing.seller_id === session?.user.id
 
   return (
@@ -131,10 +138,17 @@ export default function ListingDetailsPage() {
                 <p className="text-body-secondary">Only available listings can be edited.</p>
               )}
             </div>
+          ) : myRequest ? (
+            <div className="border rounded p-3">
+              <p className="mb-2">
+                You sent a request for this item. Request status: <strong>{REQUEST_STATUS_LABELS[myRequest.status]}</strong>.
+              </p>
+              <Link to={`/requests/${myRequest.id}`}>View your request</Link>
+            </div>
+          ) : listing.status === 'active' ? (
+            <RequestForm listingId={listing.id} priceText={formatPeso(listing.price)} />
           ) : (
-            <p className="border rounded p-3">
-              Purchase requests are added in the next build phase. For now you can view the item details only.
-            </p>
+            <p className="border rounded p-3">This item is not open for new requests ({LISTING_STATUS_LABELS[listing.status]}).</p>
           )}
         </div>
       </div>
