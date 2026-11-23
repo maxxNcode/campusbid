@@ -10,6 +10,9 @@ export default function SetupNotice() {
         <li>Fill in <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> from the team's Supabase project (Project Settings, API).</li>
         <li>Stop and start <code>npm run dev</code>.</li>
       </ol>
+      <p>
+        No database or internet here? Run <code>npm run demo</code> for the offline demo mode. It is clearly labelled, keeps its data only in this browser, and is not the real app.
+      </p>
       <p className="text-body-secondary mb-0">
         The access-rule checks do not need a database: run <code>npm run test:offline</code>.
       </p>

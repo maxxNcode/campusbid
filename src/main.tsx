@@ -6,13 +6,16 @@ import './index.css'
 import AuthProvider from './components/AuthProvider'
 import App from './App'
 import SetupNotice from './components/SetupNotice'
+import DemoBanner from './components/DemoBanner'
 import { supabaseConfigured } from './lib/supabase'
+import { demoMode } from './lib/demo'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {supabaseConfigured ? (
+    {supabaseConfigured || demoMode ? (
       <BrowserRouter>
         <AuthProvider>
+          {demoMode && <DemoBanner />}
           <App />
         </AuthProvider>
       </BrowserRouter>

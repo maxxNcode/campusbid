@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { supabase } from '../lib/supabase'
+import { demo, demoMode } from '../lib/demo'
 import { PROGRAMS } from '../lib/programs'
 import { CONDITION_LABELS, LISTING_STATUS_LABELS, formatPeso } from '../lib/listing-rules'
 import { PAGE_SIZE, searchListings, type ListingFilters, type ListingPage } from '../lib/listing-search'
@@ -60,7 +61,7 @@ export default function MarketplacePage() {
     const current = filtersFromParams(new URLSearchParams(filterKey))
     async function load() {
       try {
-        const page = await searchListings(supabase, current)
+        const page = demoMode ? demo.searchListings(current) : await searchListings(supabase, current)
         const photoPaths = page.listings.flatMap((listing) => (listing.photo_path ? [listing.photo_path] : []))
         const [sellerNames, photoUrls] = await Promise.all([
           fetchMemberNames(page.listings.map((listing) => listing.seller_id)),

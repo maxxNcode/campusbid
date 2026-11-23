@@ -31,3 +31,13 @@
 .listing-description {
   white-space: pre-line;
 }
+
+/* Offline demo mode banner: a loud colour so it is never mistaken for the real app. */
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background: #ffc107;
+  color: #000;
+  border-bottom: 3px solid #000;
+}

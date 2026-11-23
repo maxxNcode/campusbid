@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { signIn } from '../lib/accounts'
+import { demoAccounts, demoMode } from '../lib/demo'
 
 export default function SignInPage() {
   const navigate = useNavigate()
@@ -67,6 +68,31 @@ export default function SignInPage() {
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      {demoMode && (
+        <section className="alert alert-warning mt-4" aria-labelledby="demo-accounts-heading">
+          <h2 id="demo-accounts-heading" className="h6">
+            Demo accounts (offline demo mode only)
+          </h2>
+          <p className="mb-2">Any password works here, because nothing is checked against a real account.</p>
+          <ul className="mb-0">
+            {demoAccounts().map((account) => (
+              <li key={account.id}>
+                <button
+                  type="button"
+                  className="btn btn-link p-0 align-baseline"
+                  onClick={() => {
+                    setEmail(account.email)
+                    setPassword('demo')
+                  }}
+                >
+                  {account.email}
+                </button>{' '}
+                {account.name}, {account.status}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <p className="mt-3">
         New to CampusBid? <Link to="/register">Create an account</Link>
       </p>

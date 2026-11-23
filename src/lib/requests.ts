@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { fetchMyListings } from './listings'
+import { demo, demoMode } from './demo'
 import type { Listing, MeetupPlace, PurchaseRequest } from '../types/database'
 
 // Messages written for people come from the database functions (error codes
@@ -10,6 +11,7 @@ export function requestErrorMessage(error: { code?: string; message: string }): 
 }
 
 export async function fetchMeetupPlaces(): Promise<MeetupPlace[]> {
+  if (demoMode) return demo.fetchMeetupPlaces()
   const { data, error } = await supabase
     .from('meetup_places')
     .select('*')
@@ -21,6 +23,7 @@ export async function fetchMeetupPlaces(): Promise<MeetupPlace[]> {
 }
 
 export async function fetchMyRequestForListing(listingId: number, buyerId: string): Promise<PurchaseRequest | null> {
+  if (demoMode) return demo.fetchMyRequestForListing(listingId)
   const { data, error } = await supabase
     .from('purchase_requests')
     .select('*')
@@ -32,6 +35,7 @@ export async function fetchMyRequestForListing(listingId: number, buyerId: strin
 }
 
 export async function fetchRequest(id: number): Promise<PurchaseRequest | null> {
+  if (demoMode) return demo.fetchRequest(id)
   const { data, error } = await supabase.from('purchase_requests').select('*').eq('id', id).maybeSingle()
   if (error) throw error
   return data
@@ -43,6 +47,7 @@ export async function sendPurchaseRequest(
   place: string,
   meetupIso: string,
 ): Promise<PurchaseRequest> {
+  if (demoMode) return demo.sendPurchaseRequest(listingId, note, place, meetupIso)
   const { data, error } = await supabase.rpc('send_purchase_request', {
     target_listing_id: listingId,
     request_note: note.trim() === '' ? null : note,
@@ -54,12 +59,14 @@ export async function sendPurchaseRequest(
 }
 
 export async function acceptPurchaseRequest(id: number): Promise<PurchaseRequest> {
+  if (demoMode) return demo.acceptPurchaseRequest(id)
   const { data, error } = await supabase.rpc('accept_purchase_request', { target_request_id: id })
   if (error) throw error
   return data
 }
 
 export async function declinePurchaseRequest(id: number, reason: string): Promise<PurchaseRequest> {
+  if (demoMode) return demo.declinePurchaseRequest(id, reason)
   const { data, error } = await supabase.rpc('decline_purchase_request', {
     target_request_id: id,
     decline_reason: reason.trim() === '' ? null : reason,
@@ -69,12 +76,14 @@ export async function declinePurchaseRequest(id: number, reason: string): Promis
 }
 
 export async function cancelPurchaseRequest(id: number, reason: string): Promise<PurchaseRequest> {
+  if (demoMode) return demo.cancelPurchaseRequest(id, reason)
   const { data, error } = await supabase.rpc('cancel_purchase_request', { target_request_id: id, cancel_reason: reason })
   if (error) throw error
   return data
 }
 
 export async function completePurchaseRequest(id: number): Promise<PurchaseRequest> {
+  if (demoMode) return demo.completePurchaseRequest(id)
   const { data, error } = await supabase.rpc('complete_purchase_request', { target_request_id: id })
   if (error) throw error
   return data
@@ -82,6 +91,7 @@ export async function completePurchaseRequest(id: number): Promise<PurchaseReque
 
 // Requests on the signed-in member's own listings, newest first.
 export async function fetchRequestsReceived(userId: string): Promise<{ requests: PurchaseRequest[]; listings: Map<number, Listing> }> {
+  if (demoMode) return demo.fetchRequestsReceived()
   const mine = await fetchMyListings(userId)
   const listings = new Map(mine.map((listing) => [listing.id, listing]))
   if (mine.length === 0) return { requests: [], listings }
@@ -97,6 +107,7 @@ export async function fetchRequestsReceived(userId: string): Promise<{ requests:
 
 // Requests the signed-in member sent as a buyer, newest first.
 export async function fetchMyRequests(userId: string): Promise<{ requests: PurchaseRequest[]; listings: Map<number, Listing> }> {
+  if (demoMode) return demo.fetchMyRequests()
   const { data, error } = await supabase
     .from('purchase_requests')
     .select('*')

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { demoAuth, demoMode } from '../lib/demo'
 import { fetchProfile } from '../lib/accounts'
 import { AuthContext } from '../lib/auth-context'
 import type { Profile } from '../types/database'
@@ -12,14 +13,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [profileUserId, setProfileUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    // In offline demo mode the session comes from the demo store instead.
+    const auth = demoMode ? demoAuth : supabase.auth
+    auth.getSession().then(({ data }) => {
       setSession(data.session)
       setSessionChecked(true)
     })
 
     // Keep this callback synchronous: Supabase advises against awaiting other
     // Supabase calls inside it. The profile is loaded by the effect below.
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: subscription } = auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       setSessionChecked(true)
     })

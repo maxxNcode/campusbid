@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { demo, demoMode } from './demo'
 import { generatedPhotoPath, type ItemCondition, type ListingDraft } from './listing-rules'
 import type { Category, Listing } from '../types/database'
 
@@ -6,6 +7,7 @@ export const PHOTO_BUCKET = 'listing-photos'
 const SIGNED_URL_SECONDS = 60 * 60
 
 export async function fetchCategories(): Promise<Category[]> {
+  if (demoMode) return demo.fetchCategories()
   const { data, error } = await supabase.from('categories').select('*').order('name')
   if (error) throw error
   return data
@@ -13,6 +15,7 @@ export async function fetchCategories(): Promise<Category[]> {
 
 // Returns null when the listing does not exist or the viewer may not see it.
 export async function fetchListing(id: number): Promise<Listing | null> {
+  if (demoMode) return demo.fetchListing(id)
   const { data, error } = await supabase.from('listings').select('*').eq('id', id).maybeSingle()
   if (error) throw error
   return data
@@ -38,6 +41,7 @@ function draftToColumns(draft: ListingDraft) {
 // Names of approved members, keyed by id. Other members' profile rows are
 // not readable, so names come from the narrow member_names() function.
 export async function fetchMemberNames(ids: string[]): Promise<Map<string, string>> {
+  if (demoMode) return demo.fetchMemberNames(ids)
   const unique = [...new Set(ids)]
   const names = new Map<string, string>()
   if (unique.length === 0) return names
@@ -49,6 +53,7 @@ export async function fetchMemberNames(ids: string[]): Promise<Map<string, strin
 
 // The seller's own listings in every status, newest first.
 export async function fetchMyListings(userId: string): Promise<Listing[]> {
+  if (demoMode) return demo.fetchMyListings()
   const { data, error } = await supabase
     .from('listings')
     .select('*')
@@ -62,6 +67,7 @@ export async function fetchMyListings(userId: string): Promise<Listing[]> {
 // Withdraws an available listing. The database checks ownership and status
 // again and cancels pending requests on it; request rows are kept.
 export async function withdrawListing(id: number): Promise<Listing> {
+  if (demoMode) return demo.withdrawListing(id)
   const { data, error } = await supabase.rpc('withdraw_listing', { target_listing_id: id })
   if (error) throw error
   return data
@@ -69,6 +75,7 @@ export async function withdrawListing(id: number): Promise<Listing> {
 
 export async function uploadListingPhoto(userId: string, file: File): Promise<string> {
   const path = generatedPhotoPath(userId, file.type)
+  if (demoMode) return demo.uploadListingPhoto(path, file).then(() => path)
   const { error } = await supabase.storage
     .from(PHOTO_BUCKET)
     .upload(path, file, { contentType: file.type, upsert: false })
@@ -77,11 +84,13 @@ export async function uploadListingPhoto(userId: string, file: File): Promise<st
 }
 
 export async function removeListingPhoto(path: string) {
+  if (demoMode) return demo.removeListingPhoto(path)
   await supabase.storage.from(PHOTO_BUCKET).remove([path])
 }
 
 // seller_id and status are not sent: the database fills them in.
 export async function createListing(draft: ListingDraft, photoPath: string): Promise<Listing> {
+  if (demoMode) return demo.createListing({ ...draftToColumns(draft), photo_path: photoPath })
   const { data, error } = await supabase
     .from('listings')
     .insert({ ...draftToColumns(draft), photo_path: photoPath })
@@ -94,12 +103,14 @@ export async function createListing(draft: ListingDraft, photoPath: string): Pro
 export class ListingNotEditableError extends Error {}
 
 export async function updateListing(id: number, draft: ListingDraft, photoPath: string | null): Promise<Listing> {
-  const { data, error } = await supabase
-    .from('listings')
-    .update({ ...draftToColumns(draft), photo_path: photoPath })
-    .eq('id', id)
-    .select()
-    .maybeSingle()
+  const { data, error } = demoMode
+    ? { data: demo.updateListing(id, { ...draftToColumns(draft), photo_path: photoPath }), error: null }
+    : await supabase
+        .from('listings')
+        .update({ ...draftToColumns(draft), photo_path: photoPath })
+        .eq('id', id)
+        .select()
+        .maybeSingle()
   if (error) throw error
   // No row back means the listing is no longer active (or not yours).
   if (!data) throw new ListingNotEditableError('This listing can no longer be edited.')
@@ -108,6 +119,7 @@ export async function updateListing(id: number, draft: ListingDraft, photoPath: 
 
 // Signed links to private photos, keyed by storage path.
 export async function signedPhotoUrls(paths: string[]): Promise<Map<string, string>> {
+  if (demoMode) return demo.signedPhotoUrls(paths)
   const urls = new Map<string, string>()
   if (paths.length === 0) return urls
   const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(paths, SIGNED_URL_SECONDS)
