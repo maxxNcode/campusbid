@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "seed": "node --env-file=.env scripts/seed.ts",
     "test": "vitest run",
-    "test:offline": "node tests/offline/run-sql-checks.mjs"
+    "test:offline": "node tests/offline/run-sql-checks.mjs",
+    "setup:check": "node --env-file-if-exists=.env scripts/setup-check.ts",
+    "reset:demo": "node --env-file-if-exists=.env scripts/reset-demo.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { CATEGORIES, DEMO_ACCOUNTS, DEMO_EMAIL_DOMAIN, type DemoAccount } from './demo-accounts.ts'
 import { DEMO_LISTINGS } from './demo-listings.ts'
+import { developmentGuardProblem } from './env-guard.ts'
 
 const PHOTO_BUCKET = 'listing-photos'
 const photoDir = new URL('./seed-photos/', import.meta.url)
@@ -22,19 +23,9 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const demoPassword = process.env.DEMO_ACCOUNT_PASSWORD
 
-if (!supabaseUrl || !serviceRoleKey || !demoPassword) {
-  console.error('Set VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and DEMO_ACCOUNT_PASSWORD in .env first.')
-  process.exit(1)
-}
-if (process.env.CAMPUSBID_ENVIRONMENT !== 'development') {
-  console.error(
-    'Refusing to create demo accounts: set CAMPUSBID_ENVIRONMENT=development in .env ' +
-      'only for a development Supabase project.',
-  )
-  process.exit(1)
-}
-if (demoPassword.length < 8) {
-  console.error('DEMO_ACCOUNT_PASSWORD must be at least 8 characters.')
+const guardProblem = developmentGuardProblem(process.env)
+if (guardProblem || !supabaseUrl || !serviceRoleKey || !demoPassword) {
+  console.error(guardProblem ?? 'Set the .env values first.')
   process.exit(1)
 }
 

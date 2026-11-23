@@ -65,6 +65,17 @@ Exact dependency versions are locked in `package-lock.json`.
    ```
    Open http://localhost:5173.
 
+### Day of setup (checklist)
+
+1. Create the free Supabase project (CampusBid only).
+2. Apply every file in `supabase/migrations/` in order (SQL Editor, or `npx supabase db push`).
+3. Turn off "Confirm email" (Authentication > Sign In / Providers > Email).
+4. `cp .env.example .env` and fill in the URL, anon key, service-role key, a demo password and `CAMPUSBID_ENVIRONMENT=development` (development project only).
+5. `npm install`, then `npm run setup:check`. It reads `.env` and lists anything missing: tables, functions, the `listing-photos` bucket (private, 5 MB, JPEG/PNG/WebP), "Confirm email" and the demo settings. It never prints your keys. Fix what it lists and run it again until it says everything is in place.
+6. `npm run seed`, then `npm test` (the Supabase tests stop being skipped), then `npm run dev`.
+
+Before a demo, `npm run reset:demo` puts the demo data back to its starting state. It deletes only the `@example.test` accounts' listings, requests (including ones they sent to others) and photos, then runs the seed. It refuses to run unless `CAMPUSBID_ENVIRONMENT=development`, so it cannot touch a project that holds real users.
+
 ### Demo accounts (local demo only)
 
 `npm run seed` creates these fictional accounts. All use the `DEMO_ACCOUNT_PASSWORD` from your `.env`. They are demo data: exclude every `@example.test` account from pilot metrics, and do not create them on a project that holds real users (the seed refuses to run unless `CAMPUSBID_ENVIRONMENT=development`).
@@ -100,6 +111,8 @@ npm run lint        # oxlint
 npm run build       # production build
 npm test            # integration tests against the Supabase project in .env
 npm run test:offline  # SQL access checks on a local in-memory Postgres (no project needed)
+npm run setup:check # after .env exists: is the Supabase project ready?
+npm run reset:demo  # development project only: reset the demo data
 ```
 
 `npm test` signs in as the seeded users and calls the real project, so run `npm run seed` first. Without a configured `.env` the tests are reported as skipped. Results so far are in `docs/testing.md`.
