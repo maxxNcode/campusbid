@@ -16,7 +16,28 @@ npm run test:offline   # 166 access-rule checks on an in-memory database; no Sup
 npm run dev            # then open http://localhost:5173
 ```
 
-`npm run test:offline` needs no database or internet after `npm install`. Without a `.env`, `npm run dev` shows a short "not connected to a database yet" page instead of the sign-in screen. Signing in needs a `.env` with only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the team's Supabase project (copy `.env.example`; the other values are for the seed and tests). That project has not been created yet, so sign-in cannot work until it is; see "Day of setup" below.
+`npm run test:offline` needs no database or internet after `npm install`. Without a `.env`, `npm run dev` shows a short "not connected to a database yet" page instead of the sign-in screen; to click through the app without a database, use `npm run demo` (below). Signing in needs a `.env` with only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the team's Supabase project (copy `.env.example`; the other values are for the seed and tests). That project has not been created yet, so sign-in cannot work until it is; see "Day of setup" below.
+
+### Offline demo mode (no database, no internet)
+
+```sh
+npm install
+npm run demo           # then open http://localhost:5173
+```
+
+`npm run demo` starts the same app with `.env.demo` (`VITE_DEMO_MODE=true`, no keys). Only the data layer changes: the functions in `src/lib/` call a store kept in this browser's localStorage (`src/lib/demo/`) instead of Supabase. Every page shows a yellow banner: "Offline demo mode: data is saved only in this browser, not in the CampusBid database." The banner also has an account switcher and a "Reset demo data" button.
+
+- Accounts: `admin@example.test`, `seller@example.test`, `buyer@example.test`, `pending@example.test` (listed on the sign-in page in demo mode only). Any password works.
+- Seller and buyer at once: use two tabs of the same browser (each tab keeps its own sign-in, the data is shared), or the account switcher. A private window or a second browser profile has separate storage and does **not** see the same data, so it is not supported in demo mode.
+- The data starts from the same fictional accounts, listings and placeholder photos as `npm run seed`. Uploaded photos are kept as data URLs.
+
+Demo mode is a backup for when there is no internet or database. It is **not** evidence: never use demo mode screenshots for Checkpoint 2 or the final report. What the demo store does not mirror:
+
+- Sign-in is not real: any password works for an account in the store, and the store keeps no passwords.
+- The access rules and the request rules are rewritten in TypeScript (`src/lib/demo/store.ts`) from the migrations. Only the offline SQL checks and the Supabase tests check the real rules; the demo store has its own unit tests.
+- No locking: two tabs that act at the same moment are not serialised like `FOR UPDATE` in Postgres. A tab reads the other tab's changes on its next action or reload.
+- Photos are scaled to at most 800 px and kept as data URLs in localStorage (about 5 MB in total per browser), not in the private bucket with signed links.
+- No email confirmation, no Supabase Storage limits, no database triggers beyond what the store sets itself (status, times, reviewer).
 
 ## Current status
 

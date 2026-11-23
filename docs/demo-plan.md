@@ -38,6 +38,12 @@ Do not reset data or run migrations against a database that might hold real user
 - Photos do not load: the page shows "No photo available" and the flow still works; say so.
 - The project is paused or offline: show the backup recording and the screenshots, and say plainly that the live run could not happen.
 
+## Offline demo mode (backup only)
+
+If there is no internet or the Supabase project is unreachable, `npm run demo` runs the same screens on data kept in the browser (see "Offline demo mode" in the README). Use two tabs of the same browser for seller and buyer, or the account switcher in the yellow banner; a private window does not share the data. Press "Reset demo data" before starting.
+
+Say out loud that this is the offline demo mode and not the real database. Demo mode screenshots are **not** Checkpoint 2 or final evidence: evidence comes only from the real app on the Supabase project.
+
 ## Backup recording
 
 Not made yet. To make it after the first full real run, record one clean pass of the script above on the demo machine.

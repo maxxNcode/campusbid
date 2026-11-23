@@ -143,3 +143,14 @@ New offline checks: a meetup at exactly 20:00:00 is accepted and 20:00:01 refuse
 
 Not run: the seed, `reset:demo` against a real project, the 51 Supabase integration tests, the real two-connection race, and real screenshots.
 
+## Checks run on 2026-11-23 (offline demo mode)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| TypeScript, lint, build | `npm run typecheck`, `npm run lint`, `npm run build` | Passed |
+| Offline SQL checks | `npm run test:offline` | 166 of 166 passed |
+| `npm test` | Vitest | 24 passed, 51 skipped. The 14 new tests (`tests/demo-store.test.ts`) cover the demo store: approval gate, ownership, one request per buyer per item, accept reserves and declines the others, expired pending cannot be accepted, meetup place and time rules, cancel-accepted reopens, complete sells, only active listings editable, withdraw cancels pending |
+| Section 4 flow in demo mode | Playwright on `npm run demo`, two tabs, 1280 and 360 px | Seller signs in, lists an item with a photo, buyer finds it by keyword and category, sends a request, seller accepts (reserved), buyer sees the meetup, seller completes (sold); then the account switcher, an admin approval and the reset. Banner on every page, no horizontal scroll, no console errors, no request left the local server |
+
+These check the demo mode only. They are not evidence of the real app and say nothing about Supabase.
+
