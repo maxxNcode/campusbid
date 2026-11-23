@@ -4,6 +4,20 @@ CampusBid by Ctrl+Alt Build is a responsive web application where University of 
 
 Team: Mark Froilan Lendio (leader), John Nicholas De La Calzada, Rene James Aleonar, Lance Busico. BSIT 4C, Lean Startup Methodology / IT-FRELEAN. Faculty mentor: Christian Barral.
 
+## Run it in the lab
+
+Needs Node.js 20.19 or newer (22.12+ also works; the project was built on Node 26) and git.
+
+```sh
+git clone https://github.com/maxxNcode/campusbid.git
+cd campusbid
+npm install
+npm run test:offline   # 166 access-rule checks on an in-memory database; no Supabase, no .env
+npm run dev            # then open http://localhost:5173
+```
+
+`npm run test:offline` needs no database or internet after `npm install`. `npm run dev` shows the sign-in page without any setup, but signing in needs a `.env` with only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the team's Supabase project (copy `.env.example`; the other values are for the seed and tests). That project has not been created yet, so sign-in cannot work until it is; see "Day of setup" below.
+
 ## Current status
 
 Phases 1 to 3 of the build (accounts and approval, listings, then purchase requests with meetups) are implemented. The screens are temporary functional pages with plain Bootstrap styling; the team will supply the visual design. See `docs/progress.md` for the dated log and `docs/scope.md` for feature status.
