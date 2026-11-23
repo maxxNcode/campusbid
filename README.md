@@ -16,7 +16,7 @@ npm run test:offline   # 166 access-rule checks on an in-memory database; no Sup
 npm run dev            # then open http://localhost:5173
 ```
 
-`npm run test:offline` needs no database or internet after `npm install`. `npm run dev` shows the sign-in page without any setup, but signing in needs a `.env` with only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the team's Supabase project (copy `.env.example`; the other values are for the seed and tests). That project has not been created yet, so sign-in cannot work until it is; see "Day of setup" below.
+`npm run test:offline` needs no database or internet after `npm install`. Without a `.env`, `npm run dev` shows a short "not connected to a database yet" page instead of the sign-in screen. Signing in needs a `.env` with only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the team's Supabase project (copy `.env.example`; the other values are for the seed and tests). That project has not been created yet, so sign-in cannot work until it is; see "Day of setup" below.
 
 ## Current status
 
