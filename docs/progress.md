@@ -101,3 +101,19 @@ Decisions:
 - Each transition is one database function that locks the listing row first, then the request, then re-checks approval, ownership and state.
 - Review fixes (same day): expired pending requests cannot be accepted, a pending cancel needs no reason, an accepted cancel on a non-reserved listing raises, and My Requests loads listings in one query (commits b2d79e2, 8ba4980).
 - Replays give a plain message instead of changing anything.
+
+## 2026-11-23, Phase 4 part A: everything that does not need the database
+
+No Supabase project exists yet, so the real screenshots, the seed, the 51 Supabase integration tests, the two-buyer race and the full two-session run are waiting. Done in this session:
+
+| Commit | Change |
+| --- | --- |
+| e0bc4b5 | `npm run setup:check`, `npm run reset:demo`, offline tests for both, "Day of setup" in the README |
+
+- `setup:check` reads `.env`, confirms the project answers, that every table and function from the migrations and the `listing-photos` bucket exist, that "Confirm email" is off, and lists what is missing. It never prints a key. A test keeps its list of tables and functions in step with the migration files.
+- `reset:demo` refuses unless `CAMPUSBID_ENVIRONMENT=development`, deletes only the `@example.test` accounts' data and runs the seed. The refusal and the setup check are tested against a local stub server; the delete itself has not run against a real project.
+- Usability pass at 360 and 1280 px with the stubbed browser run (a check, not evidence): every field has a label, buttons and links have names, the first Tab stop shows a focus ring, no page scrolls sideways, missing items show "not found" messages, and a failed photo shows "No photo available". No fix was needed.
+- Records brought up to date: demo plan, metrics, contributions, scope, known issues, testing, and `docs/checkpoint2-evidence.md` for the PM.
+
+Dates in this log are the real dates of the sessions (2026-11-12, 2026-11-16, 2026-11-20 and 2026-11-23). The stack change from the Checkpoint 1 plan (Laravel, Blade, MySQL) to React, TypeScript and Supabase was decided on 2026-11-09 and is explained at the top of this file.
+

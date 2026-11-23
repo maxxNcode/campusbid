@@ -131,3 +131,15 @@ Not run: `tests/requests.test.ts` (checks 4 to 10 and the meetup part of 11), th
 | `npm test` | 4 passed, 51 skipped (one new integration test); no `.env` |
 
 New offline checks: a meetup at exactly 20:00:00 is accepted and 20:00:01 refused, pending cancel with no reason works and a 1-character reason is still refused, an expired request cannot be accepted but can be declined, and cancelling an accepted request on a non-reserved listing raises and leaves the request accepted. The stubbed screen run was not repeated after these small UI changes. The parallel double-accept still has not run.
+
+## Checks run on 2026-11-23 (Phase 4 part A)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| TypeScript, lint, build | `npm run typecheck`, `npm run lint`, `npm run build` | Passed |
+| Offline SQL checks | `npm run test:offline` | 166 of 166 passed |
+| `npm test` | Vitest | 10 passed, 51 skipped. The 6 new passing tests cover the setup check and the demo-reset guard against a local stub server; the 51 skipped need a Supabase project |
+| Usability pass | Playwright with stubbed Supabase, 360 and 1280 px | Labels, names, focus ring, no horizontal scroll, not-found and empty states: no problems found. A check on scaffolding, not evidence |
+
+Not run: the seed, `reset:demo` against a real project, the 51 Supabase integration tests, the real two-connection race, and real screenshots.
+

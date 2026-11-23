@@ -1,26 +1,43 @@
 # Five-minute demo plan
 
-Status: the full flow is not built yet. Only sign-in and account approval can be shown today.
+Status: the full flow is built (sign-in, approval, listings, requests, meetups, completion). It has been checked offline and with stubbed responses only. It has not run against a real Supabase project, so the live rehearsal is still to do.
 
-## Script
+## Script (about five minutes)
 
 | Time | What to show | Proposed presenter |
 | --- | --- | --- |
-| 0:00–0:45 | Campus problem and the Checkpoint 1 classroom design inputs (not usability findings) | Mark |
-| 0:45–3:45 | Seller lists an item, buyer searches and requests, seller accepts, buyer sees the meetup, seller completes | Lance, with Nicholas on the second session |
-| 3:45–4:30 | Real feedback and one known limitation; if no session ran, say validation is pending | Rene |
-| 4:30–5:00 | Next test, deferred auctions and payments, what the team needs from the mentor | Mark |
+| 0:00–0:45 | The specific campus problem and the Checkpoint 1 classroom design inputs (U01–U05). Say these were design inputs, not usability findings | Mark |
+| 0:45–3:45 | Seller lists an item with a photo (seller browser). Buyer searches "calculator", filters, opens the item and sends a request with a campus meetup place and time (buyer browser). Seller opens Requests Received and accepts; the item shows Reserved. Buyer opens My Requests and sees the accepted request and meetup. After the handover the seller marks it handed over; the item shows Sold | Lance, with Nicholas on the second session |
+| 3:45–4:30 | Real feedback and the fix it led to, and one known limitation. If no session ran, say validation is pending (see `docs/feedback-template.md`) | Rene |
+| 4:30–5:00 | Next test, deferred auctions and payments, and what the team needs from the mentor | Mark |
 
 ## Accounts
 
-Seller: seller@example.test. Buyer: buyer@example.test, in a second browser profile or private window. Admin: admin@example.test. Password: `DEMO_ACCOUNT_PASSWORD` from `.env`. These are fictional demo accounts.
+Fictional demo accounts, created by `npm run seed`; password is `DEMO_ACCOUNT_PASSWORD` from `.env`.
+
+| Use | Account |
+| --- | --- |
+| Seller | seller@example.test |
+| Buyer (second browser profile or private window) | buyer@example.test |
+| Admin (approve the pending applicant, if asked) | admin@example.test |
+| Pending applicant | pending@example.test |
 
 ## Setup before the slot
 
-- Check internet access and that the Supabase project is not paused (free projects pause after inactivity).
-- Run `npm run dev` and sign in to both sessions.
-- Have the screenshot set ready.
+1. The Supabase project exists and has not paused (free projects pause after inactivity). Open the dashboard once to wake it.
+2. `npm run setup:check` says everything is in place.
+3. `npm run reset:demo` (development project only) to start from clean demo data.
+4. `npm run dev`; sign in as the seller in one browser profile and the buyer in another.
+5. Check that listing photos load and that no external CDN is needed (the app bundles its own styles).
+6. Have the screenshot set ready. Screenshots come from the real running app; none exist yet.
+
+Do not reset data or run migrations against a database that might hold real user work.
+
+## If something fails
+
+- Photos do not load: the page shows "No photo available" and the flow still works; say so.
+- The project is paused or offline: show the backup recording and the screenshots, and say plainly that the live run could not happen.
 
 ## Backup recording
 
-Not recorded yet.
+Not made yet. To make it after the first full real run, record one clean pass of the script above on the demo machine.
