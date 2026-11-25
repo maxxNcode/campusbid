@@ -1009,3 +1009,87 @@ a {
 .cb-form-section legend {
   padding: 0;
 }
+
+/* Confirm dialog for actions that cannot be undone */
+.cb-dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  border: 1px solid var(--cb-line);
+  border-radius: var(--cb-radius);
+  background: var(--cb-surface);
+  color: var(--cb-ink);
+  box-shadow: 0 18px 48px rgba(28, 37, 35, 0.22);
+}
+
+.cb-dialog::backdrop {
+  background: rgba(28, 37, 35, 0.45);
+}
+
+.cb-dialog-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.cb-dialog-body {
+  color: var(--cb-ink-soft);
+  margin-bottom: 1.25rem;
+}
+
+.cb-dialog-body p:last-child {
+  margin-bottom: 0;
+}
+
+.cb-dialog-actions {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Action area under a request */
+.cb-actions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--cb-line-soft);
+}
+
+.cb-actions .form-label {
+  font-size: 0.9rem;
+}
+
+/* Short facts in a request card: label above value, wrapping columns */
+.cb-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+}
+
+.cb-facts dt {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--cb-ink-soft);
+}
+
+.cb-facts dd {
+  margin: 0;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.cb-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.cb-reason {
+  flex: 1 1 16rem;
+  max-width: 30rem;
+  position: relative;
+}
+

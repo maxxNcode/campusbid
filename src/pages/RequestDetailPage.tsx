@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { useAuth } from '../lib/auth-context'
 import { formatManilaDateTime } from '../lib/format'
-import { LISTING_STATUS_LABELS, formatPeso } from '../lib/listing-rules'
+import { formatPeso } from '../lib/listing-rules'
 import { fetchListing, fetchMemberNames } from '../lib/listings'
 import RequestActions from '../components/RequestActions'
 import { fetchRequest } from '../lib/requests'
-import { REQUEST_STATUS_LABELS } from '../lib/request-rules'
+import { EmptyState, ErrorNotice, ListingStatusBadge, Loading, PageHeader, RequestStatusBadge } from '../components/ui'
 import type { Listing, PurchaseRequest } from '../types/database'
 
 type Details = { request: PurchaseRequest; listing: Listing | null; buyerName: string; sellerName: string }
@@ -55,15 +55,13 @@ export default function RequestDetailPage() {
     }
   }, [requestId, reloadKey])
 
-  if (state.kind === 'loading') return <p>Loading…</p>
-  if (state.kind === 'error') return <p role="alert">Could not load this request. Check your connection and reload.</p>
+  if (state.kind === 'loading') return <Loading>Loading the request…</Loading>
+  if (state.kind === 'error') return <ErrorNotice>Could not load this request. Check your connection and reload.</ErrorNotice>
   if (state.kind === 'missing') {
     return (
-      <section>
-        <h1 className="h3">Request not found</h1>
-        <p>This request does not exist, or it is not yours to see.</p>
-        <Link to="/my-requests">Back to My Requests</Link>
-      </section>
+      <EmptyState title="Request not found" action={<Link to="/my-requests" className="btn btn-primary">Back to My Requests</Link>}>
+        This request does not exist, or it is not yours to see.
+      </EmptyState>
     )
   }
 
@@ -71,6 +69,7 @@ export default function RequestDetailPage() {
   const userId = session?.user.id
   const isBuyer = request.buyer_id === userId
   const priceChanged = listing !== null && Number(listing.price) !== Number(request.price_seen)
+  const steps = timeline(request, isBuyer)
 
   return (
     <article>
@@ -84,81 +83,148 @@ export default function RequestDetailPage() {
           {outcome.message}
         </p>
       )}
-      <p>
-        <Link to={isBuyer ? '/my-requests' : '/requests-received'}>
-          ← {isBuyer ? 'My Requests' : 'Requests Received'}
-        </Link>
-      </p>
-      <h1 className="h3">Request for {listing ? listing.title : 'an item'}</h1>
-      <p>
-        Request status: <strong>{REQUEST_STATUS_LABELS[request.status]}</strong>
-        {listing && <> · Listing status: <strong>{LISTING_STATUS_LABELS[listing.status]}</strong></>}
-      </p>
+      <Link to={isBuyer ? '/my-requests' : '/requests-received'} className="cb-back">
+        ← {isBuyer ? 'My Requests' : 'Requests Received'}
+      </Link>
 
-      <dl className="row">
-        <dt className="col-sm-4">Item</dt>
-        <dd className="col-sm-8">
-          {listing ? <Link to={`/listings/${listing.id}`}>{listing.title}</Link> : 'No longer visible to you'}
-        </dd>
-        <dt className="col-sm-4">Price the buyer saw</dt>
-        <dd className="col-sm-8">
-          {formatPeso(request.price_seen)}
-          {priceChanged && listing && (
-            <span className="d-block text-body-secondary">
-              The listing price is now {formatPeso(listing.price)}. Confirm the price before you pay.
-            </span>
+      <PageHeader title={<>Request for {listing ? listing.title : 'an item'}</>}>
+        <span className="d-inline-flex flex-wrap align-items-center gap-2">
+          <span>Request status:</span> <RequestStatusBadge status={request.status} />
+          {listing && (
+            <>
+              <span className="ms-sm-2">Listing:</span> <ListingStatusBadge status={listing.status} />
+            </>
           )}
-        </dd>
-        <dt className="col-sm-4">Buyer</dt>
-        <dd className="col-sm-8">{isBuyer ? 'You' : buyerName}</dd>
-        <dt className="col-sm-4">Seller</dt>
-        <dd className="col-sm-8">{isBuyer ? sellerName : 'You'}</dd>
-        <dt className="col-sm-4">Meetup place</dt>
-        <dd className="col-sm-8">{request.meetup_place}</dd>
-        <dt className="col-sm-4">Meetup time</dt>
-        <dd className="col-sm-8">{formatManilaDateTime(request.meetup_at)} (Manila time)</dd>
-        {request.note && (
-          <>
-            <dt className="col-sm-4">Buyer's note</dt>
-            <dd className="col-sm-8 listing-description">{request.note}</dd>
-          </>
-        )}
-        <dt className="col-sm-4">Sent</dt>
-        <dd className="col-sm-8">{formatManilaDateTime(request.created_at)}</dd>
-        {request.accepted_at && (
-          <>
-            <dt className="col-sm-4">Accepted</dt>
-            <dd className="col-sm-8">{formatManilaDateTime(request.accepted_at)}</dd>
-          </>
-        )}
-        {request.completed_at && (
-          <>
-            <dt className="col-sm-4">Completed</dt>
-            <dd className="col-sm-8">{formatManilaDateTime(request.completed_at)}</dd>
-          </>
-        )}
-        {request.closed_at && (
-          <>
-            <dt className="col-sm-4">{request.status === 'declined' ? 'Declined' : 'Cancelled'}</dt>
-            <dd className="col-sm-8">
-              {formatManilaDateTime(request.closed_at)}
-              {request.closed_reason && <span className="d-block">Reason: {request.closed_reason}</span>}
-            </dd>
-          </>
-        )}
-      </dl>
-      <RequestActions
-        request={request}
-        role={isBuyer ? 'buyer' : 'seller'}
-        itemTitle={listing ? listing.title : 'this item'}
-        onDone={(result) => {
-          setOutcome(result)
-          setReloadKey((key) => key + 1)
-        }}
-      />
-      <p className="text-body-secondary mt-3">
-        Payment and handover happen in person, outside CampusBid. Inspect the item before you pay.
-      </p>
+        </span>
+      </PageHeader>
+
+      <div className="row g-4">
+        <div className="col-lg-7 d-grid gap-3 align-content-start">
+          <section className="cb-card cb-card-body cb-meetup" aria-labelledby="meetup-heading">
+            <h2 id="meetup-heading" className="cb-card-title mb-2">Meetup</h2>
+            <p className="fs-5 fw-semibold mb-0">{request.meetup_place}</p>
+            <p className="mb-2">{formatManilaDateTime(request.meetup_at)} (Manila time)</p>
+            <p className="small cb-muted mb-0">
+              Payment and handover happen in person, outside CampusBid. Inspect the item before you pay.
+            </p>
+          </section>
+
+          <section className="cb-card cb-card-body" aria-labelledby="request-details-heading">
+            <h2 id="request-details-heading" className="cb-card-title">Details</h2>
+            <dl className="cb-specs">
+              <div>
+                <dt>Item</dt>
+                <dd>{listing ? <Link to={`/listings/${listing.id}`}>{listing.title}</Link> : 'No longer visible to you'}</dd>
+              </div>
+              <div>
+                <dt>Price the buyer saw</dt>
+                <dd>
+                  <span className="cb-price">{formatPeso(request.price_seen)}</span>
+                  {priceChanged && listing && (
+                    <span className="d-block small cb-muted">
+                      The listing price is now {formatPeso(listing.price)}. Confirm the price before you pay.
+                    </span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Buyer</dt>
+                <dd>{isBuyer ? 'You' : buyerName}</dd>
+              </div>
+              <div>
+                <dt>Seller</dt>
+                <dd>{isBuyer ? sellerName : 'You'}</dd>
+              </div>
+              {request.note && (
+                <div>
+                  <dt>Buyer's note</dt>
+                  <dd className="listing-description">{request.note}</dd>
+                </div>
+              )}
+              {request.closed_reason && (
+                <div>
+                  <dt>Reason given</dt>
+                  <dd>{request.closed_reason}</dd>
+                </div>
+              )}
+            </dl>
+            <RequestActions
+              request={request}
+              role={isBuyer ? 'buyer' : 'seller'}
+              itemTitle={listing ? listing.title : 'this item'}
+              onDone={(result) => {
+                setOutcome(result)
+                setReloadKey((key) => key + 1)
+              }}
+            />
+          </section>
+        </div>
+
+        <div className="col-lg-5">
+          <section className="cb-card cb-card-body" aria-labelledby="timeline-heading">
+            <h2 id="timeline-heading" className="cb-card-title">What has happened</h2>
+            <ol className="cb-timeline">
+              {steps.map((step) => (
+                <li key={step.label} className={step.state}>
+                  <strong>{step.label}</strong>
+                  <span className="visually-hidden">
+                    {step.state === 'done' ? ' (done)' : step.state === 'stopped' ? ' (ended here)' : ' (not yet)'}
+                  </span>
+                  <span className="cb-when">{step.when}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+      </div>
     </article>
   )
+}
+
+type Step = { label: string; when: string; state: 'done' | 'stopped' | 'next' }
+
+// The request's history in words, oldest first, with the next step when one is due.
+function timeline(request: PurchaseRequest, isBuyer: boolean): Step[] {
+  const steps: Step[] = [{ label: 'Request sent', when: formatManilaDateTime(request.created_at), state: 'done' }]
+  if (request.accepted_at) {
+    steps.push({ label: 'Accepted by the seller', when: formatManilaDateTime(request.accepted_at), state: 'done' })
+  }
+  switch (request.status) {
+    case 'pending':
+      steps.push({
+        label: 'Seller accepts or declines',
+        when: isBuyer ? 'Waiting for the seller.' : 'Waiting for you.',
+        state: 'next',
+      })
+      break
+    case 'accepted':
+      steps.push({
+        label: 'Meet, inspect and pay in person',
+        when: `At ${request.meetup_place}, ${formatManilaDateTime(request.meetup_at)}. The seller then marks it as handed over.`,
+        state: 'next',
+      })
+      break
+    case 'completed':
+      steps.push({
+        label: 'Handed over; item sold',
+        when: request.completed_at ? formatManilaDateTime(request.completed_at) : '',
+        state: 'done',
+      })
+      break
+    case 'declined':
+      steps.push({
+        label: 'Declined by the seller',
+        when: request.closed_at ? formatManilaDateTime(request.closed_at) : '',
+        state: 'stopped',
+      })
+      break
+    case 'cancelled':
+      steps.push({
+        label: 'Cancelled',
+        when: request.closed_at ? formatManilaDateTime(request.closed_at) : '',
+        state: 'stopped',
+      })
+      break
+  }
+  return steps
 }

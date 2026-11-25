@@ -7,6 +7,7 @@ import { formatPeso } from '../lib/listing-rules'
 import { fetchMemberNames } from '../lib/listings'
 import { fetchMyRequests, fetchRequestsReceived } from '../lib/requests'
 import { REQUEST_STATUS_LABELS, type RequestStatus } from '../lib/request-rules'
+import { EmptyState, ErrorNotice, Loading, PageHeader, RequestStatusBadge } from '../components/ui'
 import type { Listing, PurchaseRequest } from '../types/database'
 
 type Props = { role: 'buyer' | 'seller' }
@@ -47,8 +48,27 @@ export default function RequestListPage({ role }: Props) {
   }, [role, userId, reloadKey])
 
   const title = role === 'seller' ? 'Requests Received' : 'My Requests'
-  if (state.kind === 'loading') return <p>Loading…</p>
-  if (state.kind === 'error') return <p role="alert">Could not load your requests. Check your connection and reload.</p>
+  const intro =
+    role === 'seller'
+      ? 'Requests from buyers on your listings. Accepting one reserves the item for that buyer.'
+      : 'Requests you sent to sellers. You can send one request per item.'
+
+  if (state.kind === 'loading') {
+    return (
+      <section>
+        <PageHeader title={title}>{intro}</PageHeader>
+        <Loading>Loading requests…</Loading>
+      </section>
+    )
+  }
+  if (state.kind === 'error') {
+    return (
+      <section>
+        <PageHeader title={title}>{intro}</PageHeader>
+        <ErrorNotice>Could not load your requests. Check your connection and reload.</ErrorNotice>
+      </section>
+    )
+  }
 
   const { requests, listings, names } = state
   const shown = filter === 'all' ? requests : requests.filter((request) => request.status === filter)
@@ -57,64 +77,79 @@ export default function RequestListPage({ role }: Props) {
 
   return (
     <section>
-      <h1 className="h3">{title}</h1>
-      <p className="text-body-secondary">
-        {role === 'seller'
-          ? 'Requests from buyers on your listings. Accept one to reserve the item.'
-          : 'Requests you sent to sellers. Each item allows one request per buyer.'}
-      </p>
+      <PageHeader title={title}>{intro}</PageHeader>
       {outcome && (
         <p className={`alert ${outcome.ok ? 'alert-success' : 'alert-danger'}`} role={outcome.ok ? 'status' : 'alert'}>
           {outcome.message}
         </p>
       )}
 
-      <div className="mb-3">
-        <label htmlFor="request-filter" className="form-label">Show</label>
-        <select
-          id="request-filter"
-          className="form-select form-select-sm w-auto"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value as RequestStatus | 'all')}
-        >
+      {requests.length > 0 && (
+        <div className="cb-tabs" role="group" aria-label="Filter by request status">
           {FILTERS.map((status) => (
-            <option key={status} value={status}>
-              {status === 'all' ? 'All requests' : REQUEST_STATUS_LABELS[status]} ({counts(status)})
-            </option>
+            <button
+              key={status}
+              type="button"
+              className="cb-tab"
+              aria-pressed={filter === status}
+              onClick={() => setFilter(status)}
+            >
+              {status === 'all' ? 'All' : REQUEST_STATUS_LABELS[status]} <span className="cb-count">({counts(status)})</span>
+            </button>
           ))}
-        </select>
-      </div>
+        </div>
+      )}
 
-      {shown.length === 0 ? (
-        <p className="border rounded p-3">
-          {requests.length === 0
-            ? role === 'seller'
-              ? 'No one has sent a request on your listings yet.'
-              : 'You have not sent any requests yet. Open an available item in Browse to send one.'
-            : 'No requests with this status.'}
-        </p>
+      {requests.length === 0 ? (
+        role === 'seller' ? (
+          <EmptyState title="No requests yet." action={<Link to="/my-listings" className="btn btn-outline-primary">Go to My Listings</Link>}>
+            When a buyer requests one of your available items, it shows up here for you to accept or decline.
+          </EmptyState>
+        ) : (
+          <EmptyState title="You have not sent any requests yet." action={<Link to="/" className="btn btn-primary">Browse items</Link>}>
+            Open an available item in Browse and choose a meetup place and time to send a request.
+          </EmptyState>
+        )
+      ) : shown.length === 0 ? (
+        <EmptyState title={`No ${REQUEST_STATUS_LABELS[filter as RequestStatus].toLowerCase()} requests.`}>
+          Choose another status above to see the rest.
+        </EmptyState>
       ) : (
-        <ul className="list-unstyled d-grid gap-3">
+        <ul className="list-unstyled d-grid gap-3 mb-0">
           {shown.map((request) => {
             const listing = listings.get(request.listing_id)
             const itemTitle = listing?.title ?? 'An item'
             const other = role === 'seller' ? names.get(request.buyer_id) : listing ? names.get(listing.seller_id) : undefined
             return (
-              <li key={request.id} className="border rounded p-3">
-                <h2 className="h5 mb-1">
-                  <Link to={`/requests/${request.id}`}>{itemTitle}</Link>
-                </h2>
-                <p className="mb-1">
-                  Request status: <strong>{REQUEST_STATUS_LABELS[request.status]}</strong>
-                  {' · '}Price seen: {formatPeso(request.price_seen)}
-                </p>
-                <p className="mb-1">
-                  {role === 'seller' ? 'Buyer' : 'Seller'}: {other ?? 'A CampusBid member'}
-                </p>
-                <p className="mb-1">
-                  Meetup: {request.meetup_place}, {formatManilaDateTime(request.meetup_at)}
-                </p>
-                {request.closed_reason && <p className="mb-1">Reason: {request.closed_reason}</p>}
+              <li key={request.id} className="cb-card cb-card-body">
+                <div className="d-flex flex-wrap align-items-start gap-2 mb-2">
+                  <h2 className="cb-row-title mb-0 me-auto">
+                    <Link to={`/requests/${request.id}`}>{itemTitle}</Link>
+                  </h2>
+                  <RequestStatusBadge status={request.status} />
+                </div>
+                <dl className="cb-facts">
+                  <div>
+                    <dt>Price seen</dt>
+                    <dd className="cb-price">{formatPeso(request.price_seen)}</dd>
+                  </div>
+                  <div>
+                    <dt>{role === 'seller' ? 'Buyer' : 'Seller'}</dt>
+                    <dd>{other ?? 'A CampusBid member'}</dd>
+                  </div>
+                  <div>
+                    <dt>Meetup</dt>
+                    <dd>
+                      {request.meetup_place}, {formatManilaDateTime(request.meetup_at)}
+                    </dd>
+                  </div>
+                  {request.closed_reason && (
+                    <div>
+                      <dt>Reason</dt>
+                      <dd className="text-break-anywhere">{request.closed_reason}</dd>
+                    </div>
+                  )}
+                </dl>
                 <RequestActions
                   request={request}
                   role={role}
