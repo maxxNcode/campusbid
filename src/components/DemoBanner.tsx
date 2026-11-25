@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { demoAccounts, demoCurrentUserId, resetDemoData, switchDemoAccount } from '../lib/demo'
 import { useAuth } from '../lib/auth-context'
+import { useConfirm } from './use-confirm'
 
 // Shown on every page in offline demo mode (npm run demo), so it cannot be
 // mistaken for the real app.
@@ -9,6 +10,7 @@ export default function DemoBanner() {
   const navigate = useNavigate()
   const { session } = useAuth()
   const [message, setMessage] = useState('')
+  const [confirm, dialog] = useConfirm()
   const accounts = demoAccounts()
   const current = session ? demoCurrentUserId() ?? '' : ''
 
@@ -18,8 +20,14 @@ export default function DemoBanner() {
     navigate(userId ? '/' : '/sign-in', { replace: true })
   }
 
-  function handleReset() {
-    if (!window.confirm('Reset the demo data? Everything made in this demo is removed and the example data comes back.')) return
+  async function handleReset() {
+    const ok = await confirm({
+      title: 'Reset the demo data?',
+      body: <p>Everything made in this demo is removed and the example data comes back.</p>,
+      confirmLabel: 'Reset demo data',
+      danger: true,
+    })
+    if (!ok) return
     resetDemoData()
     setMessage('Demo data reset. Sign in again.')
     navigate('/sign-in', { replace: true })
@@ -27,6 +35,7 @@ export default function DemoBanner() {
 
   return (
     <div className="demo-banner" role="region" aria-label="Offline demo mode">
+      {dialog}
       <div className="container d-flex flex-wrap align-items-center gap-2 py-2 small">
         <strong className="me-auto">
           Offline demo mode: data is saved only in this browser, not in the CampusBid database.
