@@ -3,10 +3,11 @@ import { Link, useSearchParams } from 'react-router'
 import { supabase } from '../lib/supabase'
 import { demo, demoMode } from '../lib/demo'
 import { PROGRAMS } from '../lib/programs'
-import { CONDITION_LABELS, LISTING_STATUS_LABELS, formatPeso } from '../lib/listing-rules'
+import { CONDITION_LABELS, formatPeso } from '../lib/listing-rules'
 import { PAGE_SIZE, searchListings, type ListingFilters, type ListingPage } from '../lib/listing-search'
 import { fetchCategories, fetchMemberNames, signedPhotoUrls } from '../lib/listings'
 import ListingPhoto from '../components/ListingPhoto'
+import { EmptyState, ErrorNotice, ListingStatusBadge, Loading, PageHeader } from '../components/ui'
 import type { Category } from '../types/database'
 
 type Results = ListingPage & {
@@ -46,11 +47,6 @@ export default function MarketplacePage() {
 
   const [categories, setCategories] = useState<Category[]>([])
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
-  // Form fields, applied when the form is submitted.
-  const [keyword, setKeyword] = useState(filters.keyword)
-  const [categoryId, setCategoryId] = useState(filters.categoryId === null ? '' : String(filters.categoryId))
-  const [program, setProgram] = useState(filters.program ?? '')
-  const [includeReserved, setIncludeReserved] = useState(filters.includeReserved)
 
   useEffect(() => {
     fetchCategories().then(setCategories, () => setCategories([]))
@@ -78,32 +74,18 @@ export default function MarketplacePage() {
     }
   }, [filterKey])
 
-  function applyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function search(next: ListingFilters) {
     setState({ kind: 'loading' })
-    setSearchParams(
-      paramsFromFilters({
-        keyword,
-        categoryId: categoryId ? Number(categoryId) : null,
-        program: program || null,
-        includeReserved,
-        page: 1,
-      }),
-    )
+    setSearchParams(paramsFromFilters(next))
   }
 
   function clearFilters() {
-    setKeyword('')
-    setCategoryId('')
-    setProgram('')
-    setIncludeReserved(false)
     setState({ kind: 'loading' })
     setSearchParams({})
   }
 
   function goToPage(page: number) {
-    setState({ kind: 'loading' })
-    setSearchParams(paramsFromFilters({ ...filters, page }))
+    search({ ...filters, page })
     window.scrollTo(0, 0)
   }
 
@@ -113,25 +95,91 @@ export default function MarketplacePage() {
 
   return (
     <section>
-      <h1 className="h3">Browse</h1>
+      <PageHeader title="Browse">
+        Items for sale from approved students. Prices are fixed and in pesos; you pay in person at the meetup.
+      </PageHeader>
 
-      <form className="row g-2 align-items-end mb-4" onSubmit={applyFilters} role="search">
-        <div className="col-12 col-md-4">
+      {/* Keyed on the address so Back and Forward show the search that matches the results. */}
+      <FilterForm
+        key={filterKey}
+        filters={filters}
+        categories={categories}
+        filtering={filtering}
+        onSearch={search}
+        onClear={clearFilters}
+      />
+
+      {state.kind === 'loading' && <Loading>Loading listings…</Loading>}
+      {state.kind === 'error' && <ErrorNotice>Could not load listings. Check your connection and reload.</ErrorNotice>}
+      {state.kind === 'ready' && (
+        <BrowseResults
+          results={state.results}
+          filtering={filtering}
+          page={filters.page}
+          categoryName={categoryName}
+          onPage={goToPage}
+          onClear={clearFilters}
+        />
+      )}
+    </section>
+  )
+}
+
+type FilterFormProps = {
+  filters: ListingFilters
+  categories: Category[]
+  filtering: boolean
+  onSearch: (filters: ListingFilters) => void
+  onClear: () => void
+}
+
+function FilterForm({ filters, categories, filtering, onSearch, onClear }: FilterFormProps) {
+  const [keyword, setKeyword] = useState(filters.keyword)
+  const [categoryId, setCategoryId] = useState(filters.categoryId === null ? '' : String(filters.categoryId))
+  const [program, setProgram] = useState(filters.program ?? '')
+  const [includeReserved, setIncludeReserved] = useState(filters.includeReserved)
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    onSearch({
+      keyword,
+      categoryId: categoryId ? Number(categoryId) : null,
+      program: program || null,
+      includeReserved,
+      page: 1,
+    })
+  }
+
+  return (
+    <form className="cb-card cb-filters" onSubmit={submit} role="search" aria-label="Search listings">
+      <div className="row g-2 align-items-end">
+        <div className="col-12 col-lg-4">
           <label htmlFor="browse-keyword" className="form-label">Keyword</label>
-          <input id="browse-keyword" type="search" className="form-control" value={keyword}
-            onChange={(event) => setKeyword(event.target.value)} placeholder="e.g. fx-991ES, drafting" maxLength={100} />
+          <input
+            id="browse-keyword"
+            type="search"
+            className="form-control"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="e.g. fx-991ES, drafting"
+            maxLength={100}
+          />
         </div>
-        <div className="col-12 col-sm-6 col-md-3">
+        <div className="col-12 col-sm-6 col-lg-3">
           <label htmlFor="browse-category" className="form-label">Category</label>
-          <select id="browse-category" className="form-select" value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}>
+          <select
+            id="browse-category"
+            className="form-select"
+            value={categoryId}
+            onChange={(event) => setCategoryId(event.target.value)}
+          >
             <option value="">All categories</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
           </select>
         </div>
-        <div className="col-12 col-sm-6 col-md-3">
+        <div className="col-12 col-sm-6 col-lg-3">
           <label htmlFor="browse-program" className="form-label">Program</label>
           <select id="browse-program" className="form-select" value={program} onChange={(event) => setProgram(event.target.value)}>
             <option value="">All programs</option>
@@ -140,28 +188,28 @@ export default function MarketplacePage() {
             ))}
           </select>
         </div>
-        <div className="col-12 col-md-2 d-grid">
+        <div className="col-12 col-lg-2 d-grid">
           <button type="submit" className="btn btn-primary">Search</button>
         </div>
-        <div className="col-12 d-flex flex-wrap align-items-center gap-3">
-          <div className="form-check mb-0">
-            <input id="browse-reserved" type="checkbox" className="form-check-input" checked={includeReserved}
-              onChange={(event) => setIncludeReserved(event.target.checked)} />
-            <label htmlFor="browse-reserved" className="form-check-label">Also show reserved items</label>
-          </div>
-          {filtering && (
-            <button type="button" className="btn btn-link p-0" onClick={clearFilters}>Clear search and filters</button>
-          )}
+      </div>
+      <div className="d-flex flex-wrap align-items-center gap-3 mt-3">
+        <div className="form-check mb-0">
+          <input
+            id="browse-reserved"
+            type="checkbox"
+            className="form-check-input"
+            checked={includeReserved}
+            onChange={(event) => setIncludeReserved(event.target.checked)}
+          />
+          <label htmlFor="browse-reserved" className="form-check-label">Also show reserved items</label>
         </div>
-      </form>
-
-      {state.kind === 'loading' && <p>Loading listings…</p>}
-      {state.kind === 'error' && <p role="alert">Could not load listings. Check your connection and reload.</p>}
-      {state.kind === 'ready' && (
-        <BrowseResults results={state.results} filtering={filtering} page={filters.page}
-          categoryName={categoryName} onPage={goToPage} onClear={clearFilters} />
-      )}
-    </section>
+        {filtering && (
+          <button type="button" className="btn btn-link p-0 ms-sm-auto" onClick={onClear}>
+            Clear search and filters
+          </button>
+        )}
+      </div>
+    </form>
   )
 }
 
@@ -177,23 +225,26 @@ type BrowseResultsProps = {
 function BrowseResults({ results, filtering, page, categoryName, onPage, onClear }: BrowseResultsProps) {
   if (results.pastEnd) {
     return (
-      <p>
-        There is nothing on page {page}.{' '}
-        <button type="button" className="btn btn-link p-0 align-baseline" onClick={() => onPage(1)}>Go to the first page</button>
-      </p>
+      <EmptyState
+        title={`There is nothing on page ${page}.`}
+        action={<button type="button" className="btn btn-outline-primary" onClick={() => onPage(1)}>Go to the first page</button>}
+      >
+        The listings may have changed since this link was made.
+      </EmptyState>
     )
   }
   if (results.total === 0) {
     return filtering ? (
-      <div>
-        <p>No available listings match your search.</p>
-        <button type="button" className="btn btn-outline-secondary" onClick={onClear}>Clear search and filters</button>
-      </div>
+      <EmptyState
+        title="No listings match your search."
+        action={<button type="button" className="btn btn-outline-primary" onClick={onClear}>Clear search and filters</button>}
+      >
+        Try a shorter keyword, another category, or include reserved items.
+      </EmptyState>
     ) : (
-      <div>
-        <p>No listings are available yet.</p>
-        <Link to="/sell" className="btn btn-outline-primary">Sell an item</Link>
-      </div>
+      <EmptyState title="No listings are available yet." action={<Link to="/sell" className="btn btn-primary">Sell an item</Link>}>
+        When approved students post items for sale, they show up here.
+      </EmptyState>
     )
   }
 
@@ -202,44 +253,50 @@ function BrowseResults({ results, filtering, page, categoryName, onPage, onClear
 
   return (
     <>
-      <p className="text-body-secondary" aria-live="polite">
+      <p className="cb-muted mb-3" aria-live="polite">
         Showing {first}–{last} of {results.total} {results.total === 1 ? 'listing' : 'listings'}, newest first.
       </p>
-      <ul className="row g-3 list-unstyled">
+      <ul className="row g-3 list-unstyled mb-4">
         {results.listings.map((listing) => (
           <li key={listing.id} className="col-12 col-sm-6 col-lg-4">
-            <div className="card h-100">
-              <ListingPhoto
-                url={listing.photo_path ? results.photoUrls.get(listing.photo_path) : undefined}
-                title={listing.title}
-                className="card-img-top"
-              />
-              <div className="card-body">
-                <h2 className="h6 card-title">
-                  <Link to={`/listings/${listing.id}`} className="stretched-link">{listing.title}</Link>
+            <article className="cb-card cb-item">
+              <ListingPhoto url={listing.photo_path ? results.photoUrls.get(listing.photo_path) : undefined} title={listing.title} />
+              <div className="cb-item-body">
+                <div className="d-flex flex-wrap align-items-center gap-2">
+                  <ListingStatusBadge status={listing.status} />
+                  <span className="cb-chip">{categoryName(listing.category_id)}</span>
+                </div>
+                <h2 className="cb-item-title">
+                  <Link to={`/listings/${listing.id}`}>{listing.title}</Link>
                 </h2>
-                <p className="fs-5 mb-1">{formatPeso(listing.price)}</p>
-                <p className="mb-1">
-                  <strong>{LISTING_STATUS_LABELS[listing.status]}</strong> · {CONDITION_LABELS[listing.condition]}
+                <p className="cb-price cb-item-price mb-0">{formatPeso(listing.price)}</p>
+                <p className="mb-0">
+                  <span className="cb-muted">Condition:</span> {CONDITION_LABELS[listing.condition]}
                 </p>
-                <p className="mb-0 text-body-secondary small">
-                  {categoryName(listing.category_id)} · {listing.program}
+                <p className="cb-item-meta mb-0">
+                  {listing.program}
                   {results.sellerNames.has(listing.seller_id) && <> · Seller: {results.sellerNames.get(listing.seller_id)}</>}
                 </p>
               </div>
-            </div>
+            </article>
           </li>
         ))}
       </ul>
       {results.pageCount > 1 && (
-        <nav className="d-flex align-items-center gap-3" aria-label="Pages">
+        <nav className="d-flex flex-wrap align-items-center justify-content-center gap-3" aria-label="Pages">
           <button type="button" className="btn btn-outline-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-            Previous
+            ← Previous
           </button>
-          <span>Page {page} of {results.pageCount}</span>
-          <button type="button" className="btn btn-outline-secondary" disabled={page >= results.pageCount}
-            onClick={() => onPage(page + 1)}>
-            Next
+          <span aria-current="page">
+            Page <strong>{page}</strong> of {results.pageCount}
+          </span>
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            disabled={page >= results.pageCount}
+            onClick={() => onPage(page + 1)}
+          >
+            Next →
           </button>
         </nav>
       )}
