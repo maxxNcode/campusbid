@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { signIn } from '../lib/accounts'
 import { demoAccounts, demoMode } from '../lib/demo'
+import AuthShell from '../components/AuthShell'
 
 export default function SignInPage() {
   const navigate = useNavigate()
@@ -28,8 +29,9 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="container py-4 form-narrow">
-      <h1 className="h3">Sign in to CampusBid</h1>
+    <AuthShell>
+      <h1 className="h3 mb-1">Sign in</h1>
+      <p className="cb-muted">Use the email you registered with.</p>
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
           <label htmlFor="sign-in-email" className="form-label">
@@ -60,16 +62,16 @@ export default function SignInPage() {
           />
         </div>
         {errorMessage && (
-          <p className="text-danger" role="alert">
+          <p className="alert alert-danger py-2" role="alert">
             {errorMessage}
           </p>
         )}
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
+        <button type="submit" className="btn btn-primary w-100" disabled={submitting}>
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
       {demoMode && (
-        <section className="alert alert-warning mt-4" aria-labelledby="demo-accounts-heading">
+        <section className="alert alert-warning mt-4 mb-0" aria-labelledby="demo-accounts-heading">
           <h2 id="demo-accounts-heading" className="h6">
             Demo accounts (offline demo mode only)
           </h2>
@@ -96,6 +98,6 @@ export default function SignInPage() {
       <p className="mt-3">
         New to CampusBid? <Link to="/register">Create an account</Link>
       </p>
-    </main>
+    </AuthShell>
   )
 }

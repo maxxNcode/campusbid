@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { registerAccount } from '../lib/accounts'
 import { PROGRAMS, YEAR_LEVELS } from '../lib/programs'
+import AuthShell from '../components/AuthShell'
 
 const MIN_PASSWORD_LENGTH = 8
 
@@ -65,18 +66,18 @@ export default function RegisterPage() {
 
   if (confirmationSent) {
     return (
-      <main className="container py-4 form-narrow">
+      <AuthShell>
         <h1 className="h3">Check your email</h1>
         <p>Open the confirmation link we sent to {email.trim()}, then sign in.</p>
         <Link to="/sign-in">Go to sign in</Link>
-      </main>
+      </AuthShell>
     )
   }
 
   return (
-    <main className="container py-4 form-narrow">
-      <h1 className="h3">Create a CampusBid account</h1>
-      <p>
+    <AuthShell>
+      <h1 className="h3 mb-1">Create an account</h1>
+      <p className="cb-muted">
         New accounts start as pending. An admin confirms your student status in person before you
         can browse or trade.
       </p>
@@ -134,7 +135,8 @@ export default function RegisterPage() {
             {fieldErrors.password}
           </div>
         </div>
-        <div className="mb-3">
+        <div className="row g-3 mb-3">
+        <div className="col-sm-7">
           <label htmlFor="register-program" className="form-label">
             Program
           </label>
@@ -156,7 +158,7 @@ export default function RegisterPage() {
             {fieldErrors.program}
           </div>
         </div>
-        <div className="mb-3">
+        <div className="col-sm-5">
           <label htmlFor="register-year" className="form-label">
             Year level
           </label>
@@ -178,18 +180,19 @@ export default function RegisterPage() {
             {fieldErrors.yearLevel}
           </div>
         </div>
+        </div>
         {errorMessage && (
-          <p className="text-danger" role="alert">
+          <p className="alert alert-danger py-2" role="alert">
             {errorMessage}
           </p>
         )}
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
+        <button type="submit" className="btn btn-primary w-100" disabled={submitting}>
           {submitting ? 'Creating account…' : 'Create account'}
         </button>
       </form>
       <p className="mt-3">
         Already registered? <Link to="/sign-in">Sign in</Link>
       </p>
-    </main>
+    </AuthShell>
   )
 }

@@ -14,7 +14,7 @@ export default function ListingPhoto({ url, title, className = '' }: ListingPhot
   if (!url || failedUrl === url) {
     return (
       <div className={`listing-photo listing-photo-missing ${className}`} role="img" aria-label={`No photo for ${title}`}>
-        No photo available
+        <span>No photo available</span>
       </div>
     )
   }

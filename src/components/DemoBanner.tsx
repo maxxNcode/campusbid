@@ -27,7 +27,7 @@ export default function DemoBanner() {
 
   return (
     <div className="demo-banner" role="region" aria-label="Offline demo mode">
-      <div className="container d-flex flex-wrap align-items-center gap-2 py-2">
+      <div className="container d-flex flex-wrap align-items-center gap-2 py-2 small">
         <strong className="me-auto">
           Offline demo mode: data is saved only in this browser, not in the CampusBid database.
         </strong>

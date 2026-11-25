@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { useAuth } from '../lib/auth-context'
 import { signOut } from '../lib/accounts'
+import AuthShell from '../components/AuthShell'
 
 export default function PendingApprovalPage() {
   const { profile, refreshProfile } = useAuth()
@@ -40,16 +41,18 @@ export default function PendingApprovalPage() {
   }
 
   return (
-    <main className="container py-4 form-narrow">
-      <h1 className="h3">{heading}</h1>
+    <AuthShell>
       {profile && (
-        <p>
-          Status: <strong>{profile.approval_status === 'pending' ? 'Pending' : 'Not approved'}</strong>
+        <p className="mb-2">
+          <span className={`cb-badge cb-badge--${profile.approval_status === 'pending' ? 'amber' : 'red'}`}>
+            Account status: {profile.approval_status === 'pending' ? 'Pending' : 'Not approved'}
+          </span>
         </p>
       )}
+      <h1 className="h3">{heading}</h1>
       <p>{explanation}</p>
       {checkedAgain && profile?.approval_status === 'pending' && (
-        <p role="status">Still pending. Please check again later.</p>
+        <p className="alert alert-info py-2" role="status">Still pending. Please check again later.</p>
       )}
       <div className="d-flex flex-wrap gap-2">
         <button type="button" className="btn btn-primary" onClick={handleCheckAgain} disabled={checking}>
@@ -59,6 +62,6 @@ export default function PendingApprovalPage() {
           Sign out
         </button>
       </div>
-    </main>
+    </AuthShell>
   )
 }

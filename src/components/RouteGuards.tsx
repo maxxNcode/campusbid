@@ -1,8 +1,13 @@
 import { Navigate, Outlet } from 'react-router'
 import { useAuth } from '../lib/auth-context'
+import { Loading } from './ui'
 
 function LoadingNotice() {
-  return <p className="container py-4">Loading…</p>
+  return (
+    <div className="container py-4">
+      <Loading />
+    </div>
+  )
 }
 
 // Pages that need a signed-in user.
