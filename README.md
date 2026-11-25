@@ -41,7 +41,7 @@ Demo mode is a backup for when there is no internet or database. It is **not** e
 
 ## Current status
 
-Phases 1 to 3 of the build (accounts and approval, listings, then purchase requests with meetups) are implemented. The screens are temporary functional pages with plain Bootstrap styling; the team will supply the visual design. See `docs/progress.md` for the dated log and `docs/scope.md` for feature status.
+Phases 1 to 3 of the build (accounts and approval, listings, then purchase requests with meetups) are implemented. The screens use a finished Bootstrap theme; `docs/design.md` explains the palette, type, components and the reasons. See `docs/progress.md` for the dated log and `docs/scope.md` for feature status.
 
 What works now:
 

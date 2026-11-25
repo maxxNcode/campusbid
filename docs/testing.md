@@ -154,3 +154,14 @@ Not run: the seed, `reset:demo` against a real project, the 51 Supabase integrat
 
 These check the demo mode only. They are not evidence of the real app and say nothing about Supabase.
 
+
+### 2026-11-25: UI polish pass (demo mode)
+
+| Check | How | Result |
+| --- | --- | --- |
+| `npx tsc -b`, `npm run lint`, `npm run build` | Local | Clean |
+| `npm run test:offline` | PGlite | 166 checks passed |
+| `npm test` | Vitest | 24 passed, 51 skipped (no `.env`, so the integration tests skip) |
+| Section 4 flow in demo mode | Playwright on `npm run demo` at 360, 768 and 1440 px, 27 screens each | Register and sign-in pages, Browse, sell form errors and photo preview, publish, buyer search and empty search, request, accept (confirm dialog), reserved, mark as handed over (confirm dialog), sold, My Listings and withdraw (confirm dialog), pending page, admin approval (confirm dialog), not found, not-connected page. Browser Back after a search restores the form values and Forward brings them back. No native `confirm()` popups, no horizontal scroll, no request left the local server |
+
+These check the demo mode only. They are not evidence of the real app and say nothing about Supabase.

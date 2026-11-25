@@ -17,7 +17,6 @@ Open items first, then closed ones. Owners marked "proposed" are not confirmed b
 | A seller can mark a request completed before the meetup time | The handover may legitimately happen early, so it is allowed | None needed | Team | None |
 | A rejected applicant cannot reapply with the same email | They must ask an admin | An admin resets the profile in the Supabase dashboard | Team | Decide whether reapplication is needed |
 | Keyword search uses `ilike` on title, description and model/edition, without an index | Fine for hundreds of listings; slower with many thousands | None needed now | Team | Add a trigram or full-text index if the pilot grows |
-| Browser Back after a search updates the results but not the text in the search form | The form can briefly show the previous filter values | Press Search or Clear | Team | Fix when the final design is applied |
 | Screens use plain Bootstrap styling | Not the final design | None | Lance (proposed) | Apply the design the team supplies |
 | No backup recording of the demo exists | If the live demo fails there is nothing to show | The screenshots, once taken from the real app | Team | Record after the first full real run |
 | No real usability session (T01 to T03) has happened | Unaided task success is not measured | None | Rene (proposed) | Run and record sessions in `docs/feedback-template.md` |
