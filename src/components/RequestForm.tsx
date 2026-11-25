@@ -9,6 +9,7 @@ import {
   type RequestDraftErrors,
 } from '../lib/request-rules'
 import type { MeetupPlace } from '../types/database'
+import { ErrorNotice, Loading } from './ui'
 
 type Props = { listingId: number; priceText: string }
 
@@ -47,17 +48,17 @@ export default function RequestForm({ listingId, priceText }: Props) {
     }
   }
 
-  if (placesFailed) return <p role="alert">Could not load the meetup places. Reload the page.</p>
-  if (!places) return <p>Loading the request form…</p>
+  if (placesFailed) return <ErrorNotice>Could not load the meetup places. Reload the page.</ErrorNotice>
+  if (!places) return <Loading>Loading the request form…</Loading>
 
   return (
-    <form onSubmit={submit} noValidate className="border rounded p-3" aria-labelledby="request-heading">
-      <h2 className="h5" id="request-heading">Request this item</h2>
-      <p className="text-body-secondary">
+    <form onSubmit={submit} noValidate className="cb-card cb-card-body" aria-labelledby="request-heading">
+      <h2 className="cb-card-title mb-1" id="request-heading">Request this item</h2>
+      <p className="cb-muted small">
         The seller sees the price you saw ({priceText}). Payment and handover happen in person, outside the app.
         You can send one request per item.
       </p>
-      {formError && <p className="alert alert-danger" role="alert">{formError}</p>}
+      {formError && <ErrorNotice>{formError}</ErrorNotice>}
 
       <div className="mb-3">
         <label htmlFor="request-place" className="form-label">Meetup place</label>
@@ -107,7 +108,7 @@ export default function RequestForm({ listingId, priceText }: Props) {
         {errors.note && <div id="request-note-error" className="invalid-feedback d-block">{errors.note}</div>}
       </div>
 
-      <button type="submit" className="btn btn-primary" disabled={sending}>
+      <button type="submit" className="btn btn-primary w-100" disabled={sending}>
         {sending ? 'Sending…' : 'Send request'}
       </button>
     </form>

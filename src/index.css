@@ -1000,3 +1000,12 @@ a {
 .form-wide {
   max-width: 48rem;
 }
+
+.cb-photo-preview {
+  border-radius: 0.5rem;
+  border: 1px solid var(--cb-line);
+}
+
+.cb-form-section legend {
+  padding: 0;
+}
